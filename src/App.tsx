@@ -542,26 +542,16 @@ export default function App() {
         <div className="absolute -top-32 -right-32 w-80 h-80 rounded-full bg-blue-500/10 blur-3xl"></div>
         <div className="absolute -bottom-32 -left-32 w-80 h-80 rounded-full bg-emerald-500/10 blur-3xl"></div>
 
-        <div className="flex flex-col items-center mt-12 space-y-5 relative z-10">
-          {/* Logo container */}
-          <div className="w-20 h-20 bg-slate-800 rounded-3xl border border-slate-700/50 flex items-center justify-center shadow-2xl p-4">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" className="w-full h-full text-blue-400">
-              <path fill="none" stroke="currentColor" strokeWidth="24" strokeLinecap="round" strokeLinejoin="round" d="M180 80h80l40 60v60H180z" />
-              <rect x="0" y="20" width="160" height="180" rx="10" fill="none" stroke="currentColor" strokeWidth="24" />
-              <circle cx="60" cy="230" r="30" fill="currentColor" />
-              <circle cx="240" cy="230" r="30" fill="currentColor" />
-            </svg>
-          </div>
-
-          <div className="text-center space-y-2">
-            <span className="text-xs font-bold text-blue-400 uppercase tracking-widest bg-blue-500/10 px-3 py-1 rounded-full border border-blue-500/20">
+        <div className="flex flex-col items-center mt-16 space-y-6 relative z-10">
+          <div className="text-center space-y-3">
+            <span className="text-[10px] font-bold text-blue-400 uppercase tracking-widest bg-blue-500/10 px-3.5 py-1.5 rounded-full border border-blue-500/15 font-display">
               Transporte Bravo
             </span>
-            <h1 className="text-3xl font-extrabold tracking-tight mt-2 text-slate-100">
-              Captura Inteligente
+            <h1 className="text-4xl font-light tracking-tight mt-3 text-white font-display">
+              Captura <span className="font-semibold">Inteligente</span>
             </h1>
-            <p className="text-sm text-slate-400 max-w-xs mx-auto">
-              Registra fletes, cobros y gastos del negocio familiar en menos de 30 segundos.
+            <p className="text-xs text-slate-400 max-w-xs mx-auto leading-relaxed">
+              Registra fletes, cobros y gastos del negocio familiar con dictado de voz y fotos de forma simple e intuitiva.
             </p>
           </div>
         </div>
@@ -667,10 +657,9 @@ export default function App() {
       {/* HEADER BAR */}
       <header className={`${bgHeader} sticky top-0 z-30 px-5 py-4`}>
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Truck className={`w-5 h-5 ${isDarkMode ? "text-white fill-white" : "text-slate-950 fill-slate-950"}`} />
-            <span className={`text-sm font-bold tracking-tight ${isDarkMode ? "text-white" : "text-slate-950"}`}>
-              Transporte Bravo
+          <div className="flex items-center">
+            <span className={`text-base font-medium tracking-tight font-display ${isDarkMode ? "text-white" : "text-slate-900"}`}>
+              Transporte <span className="font-extrabold text-blue-600">Bravo</span>
             </span>
           </div>
 
@@ -700,56 +689,56 @@ export default function App() {
           <>
             {/* Title Block */}
             <div className="space-y-1">
-              <h1 className={`text-3xl font-extrabold tracking-tight ${isDarkMode ? "text-white" : "text-[#0A1128]"}`}>
-                Captura rápida
+              <h1 className={`text-3xl font-light tracking-tight font-display ${isDarkMode ? "text-white" : "text-slate-900"}`}>
+                Captura <span className="font-semibold">rápida</span>
               </h1>
-              <p className={`text-sm ${isDarkMode ? "text-slate-400" : "text-slate-400 font-medium"}`}>
-                Registra en segundos.
+              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                Asistente Inteligente Bravo
               </p>
             </div>
 
             {/* Segmented control for input methods */}
-            <div className={`${isDarkMode ? "bg-slate-900 border border-slate-800" : "bg-[#F1F3F5]"} p-1.5 rounded-[24px] grid grid-cols-3 gap-1`}>
+            <div className={`${isDarkMode ? "bg-slate-950/40 border border-slate-800" : "bg-slate-100/70"} p-1 rounded-[16px] grid grid-cols-3 gap-1`}>
               <button
                 id="input-method-audio"
                 onClick={() => { setInputType("audio"); setCapturedMedia(null); }}
-                className={`py-3 rounded-[18px] text-xs font-bold transition-all flex items-center justify-center gap-2 ${
+                className={`py-2 rounded-[12px] text-xs font-semibold transition-all flex items-center justify-center gap-1.5 font-display ${
                   inputType === "audio" 
                     ? isDarkMode 
-                      ? "bg-slate-800 text-white shadow-md" 
-                      : "bg-white text-[#0A1128] shadow-[0_4px_12px_rgba(0,0,0,0.05)]" 
-                    : "text-slate-500 hover:text-slate-800"
+                      ? "bg-slate-800 text-white shadow-xs" 
+                      : "bg-white text-slate-900 shadow-xs" 
+                    : "text-slate-400 hover:text-slate-600"
                 }`}
               >
-                <Mic className={`w-4 h-4 ${inputType === "audio" ? "text-blue-600" : "text-slate-500"}`} />
+                <Mic className={`w-3.5 h-3.5 ${inputType === "audio" ? "text-blue-500" : "text-slate-400"}`} />
                 <span>Audio</span>
               </button>
               <button
                 id="input-method-photo"
                 onClick={() => { setInputType("foto"); setCapturedMedia(null); }}
-                className={`py-3 rounded-[18px] text-xs font-bold transition-all flex items-center justify-center gap-2 ${
+                className={`py-2 rounded-[12px] text-xs font-semibold transition-all flex items-center justify-center gap-1.5 font-display ${
                   inputType === "foto" 
                     ? isDarkMode 
-                      ? "bg-slate-800 text-white shadow-md" 
-                      : "bg-white text-[#0A1128] shadow-[0_4px_12px_rgba(0,0,0,0.05)]" 
-                    : "text-slate-500 hover:text-slate-800"
+                      ? "bg-slate-800 text-white shadow-xs" 
+                      : "bg-white text-slate-900 shadow-xs" 
+                    : "text-slate-400 hover:text-slate-600"
                 }`}
               >
-                <Camera className={`w-4 h-4 ${inputType === "foto" ? "text-blue-600" : "text-slate-500"}`} />
+                <Camera className={`w-3.5 h-3.5 ${inputType === "foto" ? "text-blue-500" : "text-slate-400"}`} />
                 <span>Foto</span>
               </button>
               <button
                 id="input-method-text"
                 onClick={() => { setInputType("texto"); setCapturedMedia(null); }}
-                className={`py-3 rounded-[18px] text-xs font-bold transition-all flex items-center justify-center gap-2 ${
+                className={`py-2 rounded-[12px] text-xs font-semibold transition-all flex items-center justify-center gap-1.5 font-display ${
                   inputType === "texto" 
                     ? isDarkMode 
-                      ? "bg-slate-800 text-white shadow-md" 
-                      : "bg-white text-[#0A1128] shadow-[0_4px_12px_rgba(0,0,0,0.05)]" 
-                    : "text-slate-500 hover:text-slate-800"
+                      ? "bg-slate-800 text-white shadow-xs" 
+                      : "bg-white text-slate-900 shadow-xs" 
+                    : "text-slate-400 hover:text-slate-600"
                 }`}
               >
-                <Type className={`w-4 h-4 ${inputType === "texto" ? "text-blue-600" : "text-slate-500"}`} />
+                <Type className={`w-3.5 h-3.5 ${inputType === "texto" ? "text-blue-500" : "text-slate-400"}`} />
                 <span>Texto</span>
               </button>
             </div>
@@ -759,8 +748,8 @@ export default function App() {
               {inputType === "texto" && (
                 <div id="text-capture-card" className={`${bgCard} rounded-2xl p-5 space-y-4`}>
                   <div>
-                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">
-                      Dicta o escribe qué ocurrió
+                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2 font-display">
+                      Escribe qué ocurrió
                     </label>
                     <textarea
                       id="text-capture-input"
@@ -768,9 +757,9 @@ export default function App() {
                       onChange={(e) => setInputText(e.target.value)}
                       placeholder="Ej: Gasté 850 de diésel para el rojo Freightliner..."
                       rows={3}
-                      className={`w-full text-sm rounded-xl px-4 py-3 outline-hidden transition-all resize-none ${
+                      className={`w-full text-xs rounded-xl px-4 py-3 outline-hidden transition-all resize-none ${
                         isDarkMode
-                          ? "bg-slate-800 border border-slate-700 text-slate-100 focus:bg-slate-750 focus:ring-1 focus:ring-blue-500"
+                          ? "bg-slate-800/40 border border-slate-700/60 text-slate-100 focus:bg-slate-800 focus:ring-1 focus:ring-blue-500"
                           : "bg-slate-50 border border-slate-100 text-slate-900 focus:bg-white focus:ring-1 focus:ring-blue-500"
                       }`}
                     ></textarea>
@@ -779,9 +768,9 @@ export default function App() {
                     onClick={handleProcessInput}
                     disabled={isProcessing || !inputText.trim()}
                     id="text-interpret-btn"
-                    className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white py-3 rounded-xl font-bold text-xs shadow-md shadow-blue-500/10 transition-all disabled:opacity-50"
+                    className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white py-2.5 rounded-xl font-bold text-xs shadow-sm shadow-blue-500/10 transition-all disabled:opacity-50 font-display"
                   >
-                    <Sparkles className="w-4 h-4" />
+                    <Sparkles className="w-3.5 h-3.5" />
                     <span>Interpretar con IA</span>
                   </button>
                 </div>
@@ -802,9 +791,9 @@ export default function App() {
                       onClick={handleProcessInput}
                       id="photo-interpret-btn"
                       disabled={isProcessing}
-                      className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white py-3 rounded-xl font-bold text-xs shadow-md shadow-blue-500/10 transition-all"
+                      className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white py-2.5 rounded-xl font-bold text-xs shadow-sm shadow-blue-500/10 transition-all font-display"
                     >
-                      <Sparkles className="w-4 h-4" />
+                      <Sparkles className="w-3.5 h-3.5" />
                       <span>Analizar Recibo con IA</span>
                     </button>
                   )}
@@ -826,9 +815,9 @@ export default function App() {
                       onClick={handleProcessInput}
                       id="audio-interpret-btn"
                       disabled={isProcessing}
-                      className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white py-3 rounded-xl font-bold text-xs shadow-md shadow-blue-500/10 transition-all"
+                      className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white py-2.5 rounded-xl font-bold text-xs shadow-sm shadow-blue-500/10 transition-all font-display"
                     >
-                      <Sparkles className="w-4 h-4" />
+                      <Sparkles className="w-3.5 h-3.5" />
                       <span>Escuchar e Interpretar con IA</span>
                     </button>
                   )}
@@ -836,76 +825,66 @@ export default function App() {
               )}
             </div>
 
-            {/* Quick Manual Entry buttons */}
-            <div className="space-y-3 pt-2">
-              <button
-                id="action-gasto"
-                onClick={() => handleQuickAction("gasto")}
-                className={`w-full ${bgCard} p-5 rounded-[24px] flex items-center justify-between hover:shadow-md transition-all active:scale-[0.99] group cursor-pointer`}
-              >
-                <div className="flex items-center gap-4">
-                  <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
-                    isDarkMode ? "bg-slate-800 text-slate-300" : "bg-slate-100/70 text-slate-800"
+            {/* Quick Manual Entry Grid */}
+            <div className="space-y-2.5">
+              <span className={`text-[10px] font-bold ${isDarkMode ? "text-slate-400" : "text-[#0A1128]"} uppercase tracking-widest font-display block px-1`}>
+                Registro Manual
+              </span>
+              <div className="grid grid-cols-3 gap-2.5">
+                <button
+                  id="action-gasto"
+                  onClick={() => handleQuickAction("gasto")}
+                  className={`flex flex-col items-center justify-center p-4 rounded-2xl border transition-all duration-200 active:scale-95 group cursor-pointer ${
+                    isDarkMode 
+                      ? "bg-slate-900 hover:bg-slate-800/80 border-slate-800 text-slate-100" 
+                      : "bg-white hover:bg-slate-50 border-slate-100 hover:border-slate-200/80 shadow-xs text-slate-800"
+                  }`}
+                >
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center mb-2.5 transition-colors ${
+                    isDarkMode ? "bg-rose-950/40 text-rose-400 group-hover:bg-rose-900/50" : "bg-rose-50 text-rose-500 group-hover:bg-rose-100"
                   }`}>
-                    <Receipt className="w-5 h-5" />
+                    <Receipt className="w-4 h-4" />
                   </div>
-                  <div className="text-left">
-                    <h4 className={`text-base font-bold tracking-tight ${isDarkMode ? "text-white" : "text-[#0A1128]"}`}>
-                      Gasto
-                    </h4>
-                    <p className="text-xs text-slate-400 mt-0.5">
-                      Diésel, refacciones, comida...
-                    </p>
-                  </div>
-                </div>
-                <ChevronRight className="w-5 h-5 text-slate-300 group-hover:translate-x-0.5 transition-all" />
-              </button>
+                  <span className="text-xs font-bold font-display tracking-tight">Gasto</span>
+                  <span className="text-[9px] text-slate-400 mt-0.5">Egresos</span>
+                </button>
 
-              <button
-                id="action-pago"
-                onClick={() => handleQuickAction("pago")}
-                className={`w-full ${bgCard} p-5 rounded-[24px] flex items-center justify-between hover:shadow-md transition-all active:scale-[0.99] group cursor-pointer`}
-              >
-                <div className="flex items-center gap-4">
-                  <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
-                    isDarkMode ? "bg-slate-800 text-slate-300" : "bg-slate-100/70 text-slate-800"
+                <button
+                  id="action-pago"
+                  onClick={() => handleQuickAction("pago")}
+                  className={`flex flex-col items-center justify-center p-4 rounded-2xl border transition-all duration-200 active:scale-95 group cursor-pointer ${
+                    isDarkMode 
+                      ? "bg-slate-900 hover:bg-slate-800/80 border-slate-800 text-slate-100" 
+                      : "bg-white hover:bg-slate-50 border-slate-100 hover:border-slate-200/80 shadow-xs text-slate-800"
+                  }`}
+                >
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center mb-2.5 transition-colors ${
+                    isDarkMode ? "bg-emerald-950/40 text-emerald-400 group-hover:bg-emerald-900/50" : "bg-emerald-50 text-emerald-500 group-hover:bg-emerald-100"
                   }`}>
-                    <CreditCard className="w-5 h-5" />
+                    <CreditCard className="w-4 h-4" />
                   </div>
-                  <div className="text-left">
-                    <h4 className={`text-base font-bold tracking-tight ${isDarkMode ? "text-white" : "text-[#0A1128]"}`}>
-                      Pago
-                    </h4>
-                    <p className="text-xs text-slate-400 mt-0.5">
-                      Cliente, monto, método
-                    </p>
-                  </div>
-                </div>
-                <ChevronRight className="w-5 h-5 text-slate-300 group-hover:translate-x-0.5 transition-all" />
-              </button>
+                  <span className="text-xs font-bold font-display tracking-tight">Pago</span>
+                  <span className="text-[9px] text-slate-400 mt-0.5">Ingresos</span>
+                </button>
 
-              <button
-                id="action-viaje"
-                onClick={() => handleQuickAction("viaje")}
-                className={`w-full ${bgCard} p-5 rounded-[24px] flex items-center justify-between hover:shadow-md transition-all active:scale-[0.99] group cursor-pointer`}
-              >
-                <div className="flex items-center gap-4">
-                  <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
-                    isDarkMode ? "bg-slate-800 text-slate-300" : "bg-slate-100/70 text-slate-800"
+                <button
+                  id="action-viaje"
+                  onClick={() => handleQuickAction("viaje")}
+                  className={`flex flex-col items-center justify-center p-4 rounded-2xl border transition-all duration-200 active:scale-95 group cursor-pointer ${
+                    isDarkMode 
+                      ? "bg-slate-900 hover:bg-slate-800/80 border-slate-800 text-slate-100" 
+                      : "bg-white hover:bg-slate-50 border-slate-100 hover:border-slate-200/80 shadow-xs text-slate-800"
+                  }`}
+                >
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center mb-2.5 transition-colors ${
+                    isDarkMode ? "bg-amber-950/40 text-amber-400 group-hover:bg-amber-900/50" : "bg-amber-50 text-amber-500 group-hover:bg-amber-100"
                   }`}>
-                    <Truck className="w-5 h-5" />
+                    <Truck className="w-4 h-4" />
                   </div>
-                  <div className="text-left">
-                    <h4 className={`text-base font-bold tracking-tight ${isDarkMode ? "text-white" : "text-[#0A1128]"}`}>
-                      Viaje
-                    </h4>
-                    <p className="text-xs text-slate-400 mt-0.5">
-                      Origen, destino, material
-                    </p>
-                  </div>
-                </div>
-                <ChevronRight className="w-5 h-5 text-slate-300 group-hover:translate-x-0.5 transition-all" />
-              </button>
+                  <span className="text-xs font-bold font-display tracking-tight">Viaje</span>
+                  <span className="text-[9px] text-slate-400 mt-0.5">Fletes</span>
+                </button>
+              </div>
             </div>
 
             {/* Recent Activity List preview */}
@@ -1606,11 +1585,11 @@ export default function App() {
         <button
           onClick={() => setActiveTab("inicio")}
           className={`flex flex-col items-center justify-center py-1 transition-all ${
-            activeTab === "inicio" ? "text-blue-500 font-bold" : "text-slate-400 hover:text-slate-600"
+            activeTab === "inicio" ? "text-blue-500 font-semibold" : "text-slate-400 hover:text-slate-600"
           }`}
         >
           <Home className="w-5 h-5" />
-          <span className="text-[10px] font-bold mt-1">Inicio</span>
+          <span className="text-[10px] font-semibold mt-1 font-display">Inicio</span>
         </button>
 
         {/* Big Capture button */}
@@ -1620,22 +1599,22 @@ export default function App() {
             setActiveRecord({});
             setActiveTab("captura");
           }}
-          className="flex flex-col items-center justify-center relative -top-4"
+          className="flex flex-col items-center justify-center relative -top-3"
         >
-          <div className="w-12 h-12 rounded-full bg-blue-600 text-white flex items-center justify-center shadow-lg hover:bg-blue-700 active:scale-95 transition-all shadow-blue-500/20">
-            <Plus className="w-6 h-6 stroke-[3px]" />
+          <div className="w-11 h-11 rounded-full bg-blue-600 text-white flex items-center justify-center shadow-lg hover:bg-blue-700 active:scale-95 transition-all shadow-blue-500/10">
+            <Plus className="w-5 h-5 stroke-[2.5px]" />
           </div>
-          <span className="text-[10px] font-extrabold text-blue-500 mt-1">Captura</span>
+          <span className="text-[10px] font-semibold text-blue-500 mt-1 font-display">Captura</span>
         </button>
 
         <button
           onClick={() => setActiveTab("historial")}
           className={`flex flex-col items-center justify-center py-1 transition-all ${
-            activeTab === "historial" ? "text-blue-500 font-bold" : "text-slate-400 hover:text-slate-600"
+            activeTab === "historial" ? "text-blue-500 font-semibold" : "text-slate-400 hover:text-slate-600"
           }`}
         >
           <Clock className="w-5 h-5" />
-          <span className="text-[10px] font-bold mt-1">Historial</span>
+          <span className="text-[10px] font-semibold mt-1 font-display">Historial</span>
         </button>
       </nav>
     </div>

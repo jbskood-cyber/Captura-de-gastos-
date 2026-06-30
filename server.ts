@@ -209,15 +209,32 @@ async function writeAuditoriaOnServer(
   accessToken: string,
   userEmail: string,
   accion: string,
-  detalles: string
+  entidad: string,
+  entidadId: string,
+  campoModificado: string,
+  valorAnterior: string,
+  valorNuevo: string,
+  notas: string
 ): Promise<void> {
   try {
     const now = new Date();
-    const fecha = now.toISOString().split("T")[0];
-    const hora = now.toTimeString().split(" ")[0];
-    const id_auditoria = "AUD-" + Math.floor(100000 + Math.random() * 900000);
+    const fechaHora = now.toISOString().replace("T", " ").substring(0, 19);
+    const id_evento = "AUD-" + Math.floor(100000 + Math.random() * 900000);
+    const fuente = "Captura Bravo PWA";
 
-    const row = [id_auditoria, fecha, hora, userEmail, accion, detalles];
+    const row = [
+      id_evento,
+      fechaHora,
+      userEmail || "",
+      accion || "",
+      entidad || "",
+      entidadId || "",
+      campoModificado || "",
+      valorAnterior || "",
+      valorNuevo || "",
+      fuente,
+      notas || ""
+    ];
     await appendSheetValues(accessToken, "Auditoría", [row]);
   } catch (err) {
     console.error("Auditoria write failed on server:", err);
@@ -233,12 +250,31 @@ app.get("/api/sheets/dropdowns", async (req: express.Request, res: express.Respo
 
   try {
     const [camionesRows, clientesRows] = await Promise.all([
-      getSheetValues(token, "Camiones!A2:A100").catch(() => []),
-      getSheetValues(token, "Clientes!A2:A100").catch(() => [])
+      getSheetValues(token, "Camiones!A2:B100").catch(() => []),
+      getSheetValues(token, "Clientes!A2:B100").catch(() => [])
     ]);
 
-    const camiones = camionesRows.map((row) => row[0]).filter(Boolean);
-    const clientes = clientesRows.map((row) => row[0]).filter(Boolean);
+    const camiones = camionesRows
+      .map((row) => {
+        const id = row[0] ? String(row[0]).trim() : "";
+        const nombre = row[1] ? String(row[1]).trim() : "";
+        if (id && nombre) {
+          return `${id} — ${nombre}`;
+        }
+        return id;
+      })
+      .filter(Boolean);
+
+    const clientes = clientesRows
+      .map((row) => {
+        const id = row[0] ? String(row[0]).trim() : "";
+        const nombre = row[1] ? String(row[1]).trim() : "";
+        if (id && nombre) {
+          return `${id} — ${nombre}`;
+        }
+        return id;
+      })
+      .filter(Boolean);
 
     return res.json({ camiones, clientes });
   } catch (err: any) {
@@ -379,7 +415,12 @@ app.post("/api/sheets/gasto", async (req: express.Request, res: express.Response
       token,
       gasto.Registrado_por,
       "CREAR_GASTO",
-      `Gasto ${gasto.ID_gasto} de $${gasto.Monto_MXN} guardado en Sheets.`
+      "gasto",
+      gasto.ID_gasto,
+      "",
+      "",
+      JSON.stringify({ Monto_MXN: gasto.Monto_MXN, Categoría: gasto.Categoría }),
+      `Gasto de $${gasto.Monto_MXN} guardado en Sheets.`
     );
     return res.json({ success: true });
   } catch (err: any) {
@@ -417,7 +458,12 @@ app.post("/api/sheets/pago", async (req: express.Request, res: express.Response)
       token,
       pago.Registrado_por,
       "CREAR_PAGO",
-      `Pago ${pago.ID_pago} de $${pago.Monto_MXN} por cliente ${pago.Cliente} guardado.`
+      "pago",
+      pago.ID_pago,
+      "",
+      "",
+      JSON.stringify({ Monto_MXN: pago.Monto_MXN, Cliente: pago.Cliente }),
+      `Pago de $${pago.Monto_MXN} por cliente ${pago.Cliente} guardado.`
     );
     return res.json({ success: true });
   } catch (err: any) {
@@ -462,7 +508,12 @@ app.post("/api/sheets/viaje", async (req: express.Request, res: express.Response
       token,
       viaje.Registrado_por,
       "CREAR_VIAJE",
-      `Viaje ${viaje.ID_viaje} para ${viaje.Cliente} (Camión: ${viaje.Camión}) guardado.`
+      "viaje",
+      viaje.ID_viaje,
+      "",
+      "",
+      JSON.stringify({ Cliente: viaje.Cliente, Camión: viaje.Camión, Origen: viaje.Origen, Destino: viaje.Destino }),
+      `Viaje para ${viaje.Cliente} (Camión: ${viaje.Camión}) guardado.`
     );
     return res.json({ success: true });
   } catch (err: any) {
@@ -475,9 +526,19 @@ app.post("/api/sheets/viaje", async (req: express.Request, res: express.Response
 app.post("/api/sheets/auditoria", async (req: express.Request, res: express.Response) => {
   const token = getGoogleToken(req);
   if (!token) return res.status(401).json({ error: "No autorizado" });
-  const { userEmail, accion, detalles } = req.body;
+  const { userEmail, accion, detalles, entidad, entidad_id, campo_modificado, valor_anterior, valor_nuevo, notas } = req.body;
   try {
-    await writeAuditoriaOnServer(token, userEmail || "anonimo", accion || "LOG", detalles || "");
+    await writeAuditoriaOnServer(
+      token,
+      userEmail || "anonimo",
+      accion || "LOG",
+      entidad || "",
+      entidad_id || "",
+      campo_modificado || "",
+      valor_anterior || "",
+      valor_nuevo || "",
+      notas || detalles || ""
+    );
     return res.json({ success: true });
   } catch (err: any) {
     return res.status(500).json({ error: "Error de auditoría", details: err.message });
@@ -532,25 +593,6 @@ app.post("/api/drive/upload", async (req: express.Request, res: express.Response
 
     const result: any = await response.json();
     const fileId = result.id;
-
-    // Grant public access to the file so it can be viewed by other company/family members via the Sheet
-    try {
-      if (fileId) {
-        await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}/permissions`, {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            role: "reader",
-            type: "anyone",
-          }),
-        });
-      }
-    } catch (permErr) {
-      console.warn("⚠️ Warning: Could not set anyone reader permission on file:", permErr);
-    }
 
     const webViewLink = result.webViewLink || `https://drive.google.com/open?id=${fileId}`;
     return res.json({ url: webViewLink });
@@ -638,6 +680,11 @@ app.post("/api/sheets/update-evidence", async (req: express.Request, res: expres
       token,
       "sistema",
       "ACTUALIZAR_EVIDENCIA",
+      type,
+      id,
+      evidenceType === "carga" ? "URL_evidencia_carga" : (evidenceType === "descarga" ? "URL_evidencia_descarga" : "URL_evidencia_Drive"),
+      "",
+      evidenceUrl,
       `Evidencia actualizada para ${type} ID ${id} en fila ${rowIndex}, columna ${cellColLetter}.`
     );
 

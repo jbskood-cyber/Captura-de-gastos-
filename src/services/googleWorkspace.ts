@@ -1,21 +1,9 @@
 import { Gasto, Pago, Viaje } from "../types";
 
 // Fallbacks in case Google Sheet reading fails or lists are empty
-const FALLBACK_CAMIONES = [
-  "Rojo Freightliner (Camion 01)",
-  "Azul Kenworth (Camion 02)",
-  "Blanco Volvo (Camion 03)",
-  "Gris Peterbilt (Camion 04)",
-  "Verde Mack (Camion 05)"
-];
+const FALLBACK_CAMIONES: string[] = [];
 
-const FALLBACK_CLIENTES = [
-  "Cemex S.A.",
-  "Constructora Pérez",
-  "Materiales Tolteca",
-  "Urbanizadora Pozos",
-  "Gobierno Municipal"
-];
+const FALLBACK_CLIENTES: string[] = [];
 
 /**
  * Loads Camiones dropdown list from server proxy
@@ -72,7 +60,12 @@ export async function writeAuditoria(
   accessToken: string,
   userEmail: string,
   accion: string,
-  detalles: string
+  entidad: string = "",
+  entidad_id: string = "",
+  campo_modificado: string = "",
+  valor_anterior: string = "",
+  valor_nuevo: string = "",
+  notas: string = ""
 ): Promise<void> {
   try {
     const response = await fetch("/api/sheets/auditoria", {
@@ -81,7 +74,16 @@ export async function writeAuditoria(
         Authorization: `Bearer ${accessToken}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ userEmail, accion, detalles }),
+      body: JSON.stringify({
+        userEmail,
+        accion,
+        entidad,
+        entidad_id,
+        campo_modificado,
+        valor_anterior,
+        valor_nuevo,
+        notas,
+      }),
     });
     if (!response.ok) {
       console.warn("Audit log server endpoint returned error");

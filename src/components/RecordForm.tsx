@@ -289,11 +289,14 @@ export default function RecordForm({
                   onChange={handleChange}
                   className="w-full text-sm bg-slate-50 border border-slate-100 rounded-xl px-3 py-2.5 focus:bg-white focus:ring-1 focus:ring-blue-500 outline-hidden"
                 >
-                  <option value="">-- Selecciona camión --</option>
+                  <option value="">{camiones.length === 0 ? "No hay datos cargados todavía" : "-- Selecciona camión --"}</option>
                   {camiones.map((c) => (
                     <option key={c} value={c}>{c}</option>
                   ))}
                 </select>
+                {camiones.length === 0 && (
+                  <p className="text-[11px] text-amber-600 mt-1">No hay datos de camiones cargados todavía.</p>
+                )}
               </div>
               <div>
                 <label className="block text-xs font-semibold text-slate-400 mb-1">Chofer</label>
@@ -345,11 +348,14 @@ export default function RecordForm({
                   onChange={handleChange}
                   className="w-full text-sm bg-slate-50 border border-slate-100 rounded-xl px-3 py-2.5 focus:bg-white focus:ring-1 focus:ring-blue-500 outline-hidden"
                 >
-                  <option value="">-- Ninguno --</option>
+                  <option value="">{clientes.length === 0 ? "No hay datos cargados todavía" : "-- Ninguno --"}</option>
                   {clientes.map((cl) => (
                     <option key={cl} value={cl}>{cl}</option>
                   ))}
                 </select>
+                {clientes.length === 0 && (
+                  <p className="text-[11px] text-amber-600 mt-1">No hay datos de clientes cargados todavía.</p>
+                )}
               </div>
               <div>
                 <label className="block text-xs font-semibold text-slate-400 mb-1">Viaje ID</label>
@@ -378,11 +384,14 @@ export default function RecordForm({
                 className="w-full text-sm bg-slate-50 border border-slate-100 rounded-xl px-3 py-2.5 focus:bg-white focus:ring-1 focus:ring-blue-500 outline-hidden"
                 required
               >
-                <option value="">-- Selecciona Cliente --</option>
+                <option value="">{clientes.length === 0 ? "No hay datos cargados todavía" : "-- Selecciona Cliente --"}</option>
                 {clientes.map((cl) => (
                   <option key={cl} value={cl}>{cl}</option>
                 ))}
               </select>
+              {clientes.length === 0 && (
+                <p className="text-[11px] text-amber-600 mt-1">No hay datos de clientes cargados todavía.</p>
+              )}
             </div>
 
             <div className="grid grid-cols-2 gap-4">
@@ -472,11 +481,14 @@ export default function RecordForm({
                   className="w-full text-sm bg-slate-50 border border-slate-100 rounded-xl px-3 py-2.5 focus:bg-white focus:ring-1 focus:ring-blue-500 outline-hidden"
                   required
                 >
-                  <option value="">-- Selecciona Cliente --</option>
+                  <option value="">{clientes.length === 0 ? "No hay datos cargados todavía" : "-- Selecciona Cliente --"}</option>
                   {clientes.map((cl) => (
                     <option key={cl} value={cl}>{cl}</option>
                   ))}
                 </select>
+                {clientes.length === 0 && (
+                  <p className="text-[11px] text-amber-600 mt-1">No hay datos de clientes cargados todavía.</p>
+                )}
               </div>
               <div>
                 <label className="block text-xs font-semibold text-slate-400 mb-1">Material</label>
@@ -556,11 +568,14 @@ export default function RecordForm({
                   className="w-full text-sm bg-slate-50 border border-slate-100 rounded-xl px-3 py-2.5 focus:bg-white focus:ring-1 focus:ring-blue-500 outline-hidden"
                   required
                 >
-                  <option value="">-- Selecciona camión --</option>
+                  <option value="">{camiones.length === 0 ? "No hay datos cargados todavía" : "-- Selecciona camión --"}</option>
                   {camiones.map((c) => (
                     <option key={c} value={c}>{c}</option>
                   ))}
                 </select>
+                {camiones.length === 0 && (
+                  <p className="text-[11px] text-amber-600 mt-1">No hay datos de camiones cargados todavía.</p>
+                )}
               </div>
               <div>
                 <label className="block text-xs font-semibold text-slate-400 mb-1">Chofer</label>
