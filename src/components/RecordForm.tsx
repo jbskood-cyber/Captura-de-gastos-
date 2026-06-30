@@ -36,12 +36,6 @@ const numberFrom = (value: unknown, fallback = 0) => {
   return Number.isFinite(parsed) ? parsed : fallback;
 };
 
-const formTitle = {
-  gasto: "Revisar gasto",
-  pago: "Revisar pago",
-  viaje: "Revisar viaje",
-};
-
 const confidenceCopy: Record<IAConfidence, string> = {
   alta: "Campos detectados con alta confianza.",
   media: "Revisa los campos clave antes de guardar.",
@@ -181,8 +175,8 @@ export default function RecordForm({
           {type === "viaje" && <Truck className="h-5 w-5" />}
           <span className="text-sm font-medium">Captura rápida</span>
         </div>
-        <h1 className="mt-3 text-[30px] font-semibold leading-tight">{formTitle[type]}</h1>
-        <p className="mt-2 text-[15px] text-[var(--bravo-muted)]">Confirma lo esencial. Los detalles pueden quedarse plegados.</p>
+        <h1 className="mt-3 text-[30px] font-semibold leading-tight">Revisar registro</h1>
+        <p className="mt-2 text-[15px] text-[var(--bravo-muted)]">Confirma antes de guardar.</p>
       </section>
 
       {confidence && (
@@ -280,7 +274,7 @@ export default function RecordForm({
         </button>
         <button type="submit" id="confirm-submit-btn" className="bravo-primary-button">
           <CheckCircle2 className="h-4 w-4" />
-          <span>Guardar</span>
+          <span>Confirmar y guardar</span>
         </button>
       </div>
     </form>

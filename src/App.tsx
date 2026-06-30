@@ -2,21 +2,15 @@ import React, { useEffect, useMemo, useState } from "react";
 import {
   AlertCircle,
   Camera,
-  Check,
   ChevronRight,
   Clock3,
   FileText,
-  Home,
   Landmark,
   Loader2,
   LogOut,
   Mic,
-  Moon,
-  Plus,
-  Receipt,
   Search,
   Sparkles,
-  Sun,
   Truck,
   Type,
   Wallet,
@@ -43,9 +37,9 @@ type InputType = "audio" | "foto" | "texto";
 type FilterType = "todos" | RecordType;
 type FilterStatus = "todos" | "pendiente_sync" | "validado";
 
-const OPTIONAL_DRIVE_PLACEHOLDER = "[PENDIENTE DE SUBIDA A DRIVE]";
+const PENDING_DRIVE = "[PENDIENTE DE SUBIDA A DRIVE]";
 
-const text = (value: unknown, fallback = "") => String(value ?? fallback);
+const text = (value: unknown) => String(value ?? "");
 const money = (value: unknown) => Number(value || 0).toLocaleString("es-MX");
 const getStatus = (item: any) => item.Estado_validacion || item.Estado_validación || item["Estado_validaciÃ³n"];
 const setStatus = (item: any, value: string) => {
@@ -68,7 +62,7 @@ function recordLabel(type?: RecordType) {
   return "Gasto";
 }
 
-function recordIcon(type?: RecordType, className = "w-4 h-4") {
+function recordIcon(type?: RecordType, className = "h-4 w-4") {
   if (type === "pago") return <Landmark className={className} />;
   if (type === "viaje") return <Truck className={className} />;
   return <Wallet className={className} />;
@@ -81,9 +75,9 @@ function activityTitle(item: any) {
 }
 
 function activityMeta(item: any) {
-  if (item._type === "gasto") return getTruck(item) || getPaymentMethod(item) || "Sin camión";
+  if (item._type === "gasto") return getTruck(item) || getPaymentMethod(item) || "Sin camion";
   if (item._type === "pago") return getPaymentMethod(item) || item.Viaje_ID || "Pago recibido";
-  return getTruck(item) || `${item.Origen || "Origen"} → ${item.Destino || "Destino"}`;
+  return getTruck(item) || `${item.Origen || "Origen"} -> ${item.Destino || "Destino"}`;
 }
 
 function activityAmount(item: any) {
@@ -96,7 +90,6 @@ export default function App() {
   const [needsAuth, setNeedsAuth] = useState(true);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
-  const [isDarkMode, setIsDarkMode] = useState(() => localStorage.getItem("bravo_dark_mode") === "true");
 
   const [activeTab, setActiveTab] = useState<TabKey>("inicio");
   const [inputType, setInputType] = useState<InputType>("texto");
@@ -120,10 +113,6 @@ export default function App() {
   const [filterStatus, setFilterStatus] = useState<FilterStatus>("todos");
   const [selectedDetailItem, setSelectedDetailItem] = useState<any | null>(null);
   const [isUploadingEvidence, setIsUploadingEvidence] = useState(false);
-
-  useEffect(() => {
-    localStorage.setItem("bravo_dark_mode", String(isDarkMode));
-  }, [isDarkMode]);
 
   useEffect(() => {
     const unsubscribe = initAuth(
@@ -196,18 +185,12 @@ export default function App() {
   };
 
   const handleLogout = async () => {
-    if (confirm("¿Cerrar sesión?")) {
+    if (confirm("Cerrar sesion?")) {
       await logout();
       setUser(null);
       setToken(null);
       setNeedsAuth(true);
     }
-  };
-
-  const handleQuickAction = (type: RecordType) => {
-    setActiveRecordType(type);
-    setActiveRecord({});
-    setActiveTab("captura");
   };
 
   const handleProcessInput = async () => {
@@ -248,7 +231,9 @@ export default function App() {
     } catch (err: any) {
       console.error("Gemini Extraction Error:", err);
       alert(`No se pudo interpretar: ${err.message}. Abriremos captura manual.`);
-      handleQuickAction(activeRecordType || "gasto");
+      setActiveRecordType(activeRecordType || "gasto");
+      setActiveRecord({});
+      setActiveTab("captura");
     } finally {
       setIsProcessing(false);
     }
@@ -257,11 +242,11 @@ export default function App() {
   const attachPendingDrivePlaceholder = (record: any) => {
     if (inputType !== "foto" || !capturedMedia) return;
     if (activeRecordType === "viaje") {
-      record.URL_evidencia_carga = OPTIONAL_DRIVE_PLACEHOLDER;
-      record.URL_evidencia_descarga = OPTIONAL_DRIVE_PLACEHOLDER;
+      record.URL_evidencia_carga = PENDING_DRIVE;
+      record.URL_evidencia_descarga = PENDING_DRIVE;
       return;
     }
-    record.URL_evidencia_Drive = OPTIONAL_DRIVE_PLACEHOLDER;
+    record.URL_evidencia_Drive = PENDING_DRIVE;
   };
 
   const handleSaveRecord = async (finalizedRecord: any) => {
@@ -294,7 +279,7 @@ export default function App() {
         console.error("Fallo guardado online (Sheets/Drive):", err);
         setStatus(finalizedRecord, "pendiente_sync");
         attachPendingDrivePlaceholder(finalizedRecord);
-        setNetworkError("Guardado local; se sincronizará después");
+        setNetworkError("Guardado local; se sincronizara despues");
         saveQueueToLocal([
           ...pendingSyncQueue,
           { record: finalizedRecord, type: activeRecordType, localMediaData: capturedMedia, localMediaMime: mediaMimeType },
@@ -303,7 +288,7 @@ export default function App() {
     } else {
       setStatus(finalizedRecord, "pendiente_sync");
       attachPendingDrivePlaceholder(finalizedRecord);
-      setNetworkError("Sin conexión; guardado en cola local");
+      setNetworkError("Sin conexion; guardado en cola local");
       saveQueueToLocal([
         ...pendingSyncQueue,
         { record: finalizedRecord, type: activeRecordType, localMediaData: capturedMedia, localMediaMime: mediaMimeType },
@@ -359,17 +344,17 @@ export default function App() {
     for (const item of pendingSyncQueue) {
       try {
         const hasPendingMedia =
-          item.record.URL_evidencia_Drive === OPTIONAL_DRIVE_PLACEHOLDER ||
-          item.record.URL_evidencia_carga === OPTIONAL_DRIVE_PLACEHOLDER ||
-          item.record.URL_evidencia_descarga === OPTIONAL_DRIVE_PLACEHOLDER;
+          item.record.URL_evidencia_Drive === PENDING_DRIVE ||
+          item.record.URL_evidencia_carga === PENDING_DRIVE ||
+          item.record.URL_evidencia_descarga === PENDING_DRIVE;
 
         if (hasPendingMedia && item.localMediaData) {
           const res = await fetch(item.localMediaData);
           const blob = await res.blob();
           const driveLink = await uploadFileToDrive(token, blob, `EVIDENCIA_SYNC_${Date.now()}.jpg`, item.localMediaMime || "image/jpeg");
-          if (item.record.URL_evidencia_Drive === OPTIONAL_DRIVE_PLACEHOLDER) item.record.URL_evidencia_Drive = driveLink;
-          if (item.record.URL_evidencia_carga === OPTIONAL_DRIVE_PLACEHOLDER) item.record.URL_evidencia_carga = driveLink;
-          if (item.record.URL_evidencia_descarga === OPTIONAL_DRIVE_PLACEHOLDER) item.record.URL_evidencia_descarga = driveLink;
+          if (item.record.URL_evidencia_Drive === PENDING_DRIVE) item.record.URL_evidencia_Drive = driveLink;
+          if (item.record.URL_evidencia_carga === PENDING_DRIVE) item.record.URL_evidencia_carga = driveLink;
+          if (item.record.URL_evidencia_descarga === PENDING_DRIVE) item.record.URL_evidencia_descarga = driveLink;
         }
 
         if (item.type === "gasto") await saveGastoToSheet(token, item.record);
@@ -394,12 +379,12 @@ export default function App() {
       setNetworkError(null);
       loadDropdownData();
     } else {
-      setNetworkError("Sincronización parcial");
+      setNetworkError("Sincronizacion parcial");
     }
   };
 
   const handleDiscardRecord = () => {
-    if (confirm("¿Descartar este registro?")) {
+    if (confirm("Descartar este registro?")) {
       setActiveRecord(null);
       setActiveRecordType(null);
       setActiveTab("inicio");
@@ -423,31 +408,27 @@ export default function App() {
 
   if (needsAuth) {
     return (
-      <div className="min-h-screen bg-[var(--bravo-bg)] text-[var(--bravo-ink)] font-sans">
-        <main className="mx-auto flex min-h-screen w-full max-w-md flex-col justify-between px-7 py-10">
-          <div className="pt-20 text-center">
-            <div className="mx-auto mb-8 flex h-12 w-12 items-center justify-center rounded-2xl border border-[var(--bravo-border)] bg-white shadow-[var(--bravo-shadow)]">
-              <Truck className="h-5 w-5 text-[var(--bravo-blue)]" />
+      <div className="min-h-screen bg-[var(--bravo-bg)] text-[var(--bravo-ink)]">
+        <main className="mx-auto flex min-h-screen w-full max-w-md flex-col justify-between px-6 py-10">
+          <div className="pt-24 text-center">
+            <div className="mx-auto mb-7 grid h-12 w-12 place-items-center rounded-2xl border border-[var(--bravo-border)] bg-[var(--bravo-surface)]">
+              <Truck className="h-5 w-5 text-[var(--bravo-muted)]" />
             </div>
-            <h1 className="text-[28px] font-semibold leading-tight tracking-normal">Captura Bravo</h1>
+            <h1 className="text-[28px] font-semibold">Captura Bravo</h1>
             <p className="mx-auto mt-3 max-w-[230px] text-[15px] leading-6 text-[var(--bravo-muted)]">
               Registra gastos, pagos y viajes.
             </p>
           </div>
 
           <div className="space-y-4 pb-7">
-            {loginError && (
-              <div className="rounded-2xl border border-rose-100 bg-rose-50 p-4 text-sm text-rose-700">
-                {loginError.includes("popup") ? "Google no pudo abrir la ventana. Intenta de nuevo en una pestaña completa." : loginError}
-              </div>
-            )}
+            {loginError && <div className="rounded-2xl border border-red-500/20 bg-red-500/10 p-4 text-sm text-red-200">{loginError}</div>}
             <button
               id="google-signin-btn"
               onClick={handleLogin}
               disabled={isLoggingIn}
-              className="flex h-14 w-full items-center justify-center gap-3 rounded-2xl border border-[var(--bravo-border)] bg-white text-[15px] font-semibold text-[var(--bravo-ink)] shadow-[var(--bravo-shadow)] transition active:scale-[0.99] disabled:opacity-60"
+              className="flex h-14 w-full items-center justify-center gap-3 rounded-2xl border border-[var(--bravo-border)] bg-[var(--bravo-surface)] text-[15px] font-semibold text-[var(--bravo-ink)] transition active:scale-[0.99] disabled:opacity-60"
             >
-              {isLoggingIn ? <Loader2 className="h-5 w-5 animate-spin" /> : <span className="grid h-5 w-5 place-items-center rounded-full border text-[11px] font-bold">G</span>}
+              {isLoggingIn ? <Loader2 className="h-5 w-5 animate-spin" /> : <span className="grid h-5 w-5 place-items-center rounded-full border border-[var(--bravo-border)] text-[11px] font-bold">G</span>}
               <span>Continuar con Google</span>
             </button>
           </div>
@@ -457,40 +438,34 @@ export default function App() {
   }
 
   const navItems: Array<{ key: TabKey; label: string; icon: React.ReactNode }> = [
-    { key: "inicio", label: "Inicio", icon: <Home className="h-5 w-5" /> },
-    { key: "captura", label: "Captura", icon: <Plus className="h-5 w-5" /> },
+    { key: "inicio", label: "Captura", icon: <Sparkles className="h-5 w-5" /> },
     { key: "historial", label: "Historial", icon: <Clock3 className="h-5 w-5" /> },
   ];
 
   return (
-    <div className={`min-h-screen font-sans ${isDarkMode ? "dark bg-slate-950 text-white" : "bg-[var(--bravo-bg)] text-[var(--bravo-ink)]"}`}>
+    <div className="min-h-screen bg-[var(--bravo-bg)] text-[var(--bravo-ink)]">
       {isProcessing && (
-        <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/45 p-6 backdrop-blur-sm">
-          <div className="w-full max-w-[260px] rounded-3xl bg-white p-6 text-center text-[var(--bravo-ink)] shadow-2xl">
-            <Loader2 className="mx-auto h-8 w-8 animate-spin text-[var(--bravo-blue)]" />
+        <div className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-6 backdrop-blur-sm">
+          <div className="w-full max-w-[260px] rounded-3xl border border-[var(--bravo-border)] bg-[var(--bravo-surface)] p-6 text-center shadow-2xl">
+            <Loader2 className="mx-auto h-8 w-8 animate-spin text-[var(--bravo-muted)]" />
             <h3 className="mt-4 text-base font-semibold">Procesando captura</h3>
-            <p className="mt-1 text-sm text-[var(--bravo-muted)]">La IA solo ayuda a llenar el registro.</p>
+            <p className="mt-1 text-sm text-[var(--bravo-muted)]">Gemini prepara el registro.</p>
           </div>
         </div>
       )}
 
       <div className="mx-auto flex min-h-screen w-full max-w-md flex-col pb-24">
-        <header className="sticky top-0 z-30 border-b border-[var(--bravo-border)] bg-[var(--bravo-bg)]/92 px-5 py-3 backdrop-blur-xl">
+        <header className="sticky top-0 z-30 border-b border-[var(--bravo-border)] bg-[var(--bravo-bg)]/90 px-5 py-4 backdrop-blur-xl">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <div className="grid h-7 w-7 place-items-center rounded-xl bg-[var(--bravo-blue)] text-white">
+              <div className="grid h-7 w-7 place-items-center rounded-xl bg-[var(--bravo-soft)] text-[var(--bravo-ink)]">
                 <Truck className="h-3.5 w-3.5" />
               </div>
-              <span className="text-[13px] font-semibold">Transporte Bravo</span>
+              <span className="text-[13px] font-semibold">Captura Bravo</span>
             </div>
-            <div className="flex items-center gap-1">
-              <button className="bravo-icon-button" onClick={() => setIsDarkMode(!isDarkMode)} aria-label="Cambiar tema">
-                {isDarkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-              </button>
-              <button className="bravo-icon-button" onClick={handleLogout} aria-label="Cerrar sesión">
-                <LogOut className="h-4 w-4" />
-              </button>
-            </div>
+            <button className="bravo-icon-button" onClick={handleLogout} aria-label="Cerrar sesion">
+              <LogOut className="h-4 w-4" />
+            </button>
           </div>
         </header>
 
@@ -498,113 +473,99 @@ export default function App() {
           {activeTab === "inicio" && (
             <>
               <section>
-                <h1 className="text-[34px] font-semibold leading-[1.05] tracking-normal">Captura rápida</h1>
-                <p className="mt-3 text-[17px] text-[var(--bravo-muted)]">Registra en segundos.</p>
+                <h1 className="text-[34px] font-semibold leading-[1.05]">Captura</h1>
+                <p className="mt-3 text-[15px] text-[var(--bravo-muted)]">Registra lo importante sin llenar formularios.</p>
               </section>
 
               <section className="space-y-4">
-                <div className="bravo-segmented">
-                  {[
-                    { key: "audio", label: "Audio", icon: <Mic className="h-4 w-4" /> },
-                    { key: "foto", label: "Foto", icon: <Camera className="h-4 w-4" /> },
-                    { key: "texto", label: "Texto", icon: <Type className="h-4 w-4" /> },
-                  ].map((item) => (
+                <div className="bravo-chat-card">
+                  <textarea
+                    id="text-capture-input"
+                    value={inputText}
+                    onChange={(event) => {
+                      setInputText(event.target.value);
+                      setInputType("texto");
+                    }}
+                    placeholder="Cuéntame o captura lo que pasó..."
+                    rows={4}
+                    className="bravo-chat-input"
+                  />
+
+                  <div className="grid grid-cols-2 gap-3">
                     <button
-                      key={item.key}
-                      id={`input-method-${item.key}`}
-                      className={inputType === item.key ? "is-active" : ""}
+                      type="button"
+                      id="input-method-audio"
+                      className={`bravo-capture-button ${inputType === "audio" ? "is-active" : ""}`}
                       onClick={() => {
-                        setInputType(item.key as InputType);
+                        setInputType("audio");
                         setCapturedMedia(null);
                       }}
                     >
-                      {item.icon}
-                      <span>{item.label}</span>
+                      <Mic className="h-5 w-5" />
+                      <span>Audio</span>
                     </button>
-                  ))}
+                    <button
+                      type="button"
+                      id="input-method-photo"
+                      className={`bravo-capture-button ${inputType === "foto" ? "is-active" : ""}`}
+                      onClick={() => {
+                        setInputType("foto");
+                        setCapturedMedia(null);
+                      }}
+                    >
+                      <Camera className="h-5 w-5" />
+                      <span>Cámara</span>
+                    </button>
+                  </div>
+
+                  <div className="flex items-center justify-between gap-3">
+                    <button type="button" id="input-method-text" className={`bravo-write-button ${inputType === "texto" ? "is-active" : ""}`} onClick={() => setInputType("texto")}>
+                      <Type className="h-4 w-4" />
+                      <span>Escribir</span>
+                    </button>
+                    <button
+                      id="text-interpret-btn"
+                      className="bravo-primary-button max-w-[152px]"
+                      disabled={isProcessing || (inputType === "texto" && !inputText.trim()) || (inputType !== "texto" && !capturedMedia)}
+                      onClick={handleProcessInput}
+                    >
+                      <Sparkles className="h-4 w-4" />
+                      <span>Revisar</span>
+                    </button>
+                  </div>
                 </div>
 
-                {inputType === "texto" && (
-                  <div className="bravo-input-card">
-                    <textarea
-                      id="text-capture-input"
-                      value={inputText}
-                      onChange={(event) => setInputText(event.target.value)}
-                      placeholder="Ej. Gasté 850 de diésel para el camión rojo."
-                      rows={3}
-                      className="bravo-textarea"
-                    />
-                    <button id="text-interpret-btn" className="bravo-primary-button" disabled={!inputText.trim() || isProcessing} onClick={handleProcessInput}>
-                      <Sparkles className="h-4 w-4" />
-                      <span>Interpretar</span>
-                    </button>
-                  </div>
-                )}
-
                 {inputType === "foto" && (
-                  <div className="space-y-3">
-                    <PhotoCapture
-                      onPhotoCaptured={(base64, mime) => {
-                        setCapturedMedia(base64);
-                        setMediaMimeType(mime);
-                      }}
-                      isProcessing={isProcessing}
-                    />
-                    {capturedMedia && (
-                      <button id="photo-interpret-btn" className="bravo-primary-button" onClick={handleProcessInput}>
-                        <Sparkles className="h-4 w-4" />
-                        <span>Interpretar foto</span>
-                      </button>
-                    )}
-                  </div>
+                  <PhotoCapture
+                    onPhotoCaptured={(base64, mime) => {
+                      setCapturedMedia(base64);
+                      setMediaMimeType(mime);
+                    }}
+                    isProcessing={isProcessing}
+                  />
                 )}
 
                 {inputType === "audio" && (
-                  <div className="space-y-3">
-                    <AudioCapture
-                      onAudioCaptured={(base64, mime) => {
-                        setCapturedMedia(base64);
-                        setMediaMimeType(mime);
-                      }}
-                      isProcessing={isProcessing}
-                    />
-                    {capturedMedia && (
-                      <button id="audio-interpret-btn" className="bravo-primary-button" onClick={handleProcessInput}>
-                        <Sparkles className="h-4 w-4" />
-                        <span>Interpretar audio</span>
-                      </button>
-                    )}
-                  </div>
+                  <AudioCapture
+                    onAudioCaptured={(base64, mime) => {
+                      setCapturedMedia(base64);
+                      setMediaMimeType(mime);
+                    }}
+                    isProcessing={isProcessing}
+                  />
                 )}
-              </section>
-
-              <section className="grid grid-cols-1 gap-3">
-                {[
-                  { type: "gasto" as RecordType, title: "Gasto", hint: "Diésel, casetas, refacciones", icon: <Receipt className="h-5 w-5" /> },
-                  { type: "pago" as RecordType, title: "Pago", hint: "Cliente, monto, método", icon: <Landmark className="h-5 w-5" /> },
-                  { type: "viaje" as RecordType, title: "Viaje", hint: "Ruta, material, camión", icon: <Truck className="h-5 w-5" /> },
-                ].map((action) => (
-                  <button key={action.type} id={`action-${action.type}`} className="bravo-action-card" onClick={() => handleQuickAction(action.type)}>
-                    <span className={`bravo-action-icon ${action.type}`}>{action.icon}</span>
-                    <span className="min-w-0 flex-1 text-left">
-                      <span className="block text-[18px] font-semibold">{action.title}</span>
-                      <span className="mt-1 block truncate text-sm text-[var(--bravo-muted)]">{action.hint}</span>
-                    </span>
-                    <ChevronRight className="h-5 w-5 text-slate-300" />
-                  </button>
-                ))}
               </section>
 
               <section className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <h2 className="text-sm font-semibold">Actividad reciente</h2>
+                  <h2 className="text-sm font-semibold">Registros recientes</h2>
                   {recentActivities.length > 0 && (
-                    <button className="text-sm font-medium text-[var(--bravo-blue)]" onClick={() => setActiveTab("historial")}>
+                    <button className="text-sm font-medium text-[var(--bravo-muted)]" onClick={() => setActiveTab("historial")}>
                       Ver todo
                     </button>
                   )}
                 </div>
-                <ActivityList items={recentActivities.slice(0, 3)} onSelect={setSelectedDetailItem} empty="Las capturas aparecerán aquí." />
+                <ActivityList items={recentActivities.slice(0, 4)} onSelect={setSelectedDetailItem} empty="Los registros recientes aparecerán aquí." />
               </section>
 
               <SyncNotification
@@ -633,10 +594,10 @@ export default function App() {
 
           {activeTab === "captura" && (!activeRecord || !activeRecordType) && (
             <div className="bravo-empty">
-              <AlertCircle className="mx-auto h-8 w-8 text-slate-300" />
+              <AlertCircle className="mx-auto h-8 w-8 text-[var(--bravo-muted)]" />
               <h2 className="mt-3 text-base font-semibold">Sin registro activo</h2>
               <button className="bravo-primary-button mt-5" onClick={() => setActiveTab("inicio")}>
-                Ir a captura rápida
+                Ir a Captura
               </button>
             </div>
           )}
@@ -645,11 +606,11 @@ export default function App() {
             <section className="space-y-5">
               <div>
                 <h1 className="text-[30px] font-semibold leading-tight">Historial</h1>
-                <p className="mt-2 text-[15px] text-[var(--bravo-muted)]">Lista cronológica de capturas.</p>
+                <p className="mt-2 text-[15px] text-[var(--bravo-muted)]">Lista separada de registros guardados.</p>
               </div>
               <div className="relative">
-                <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                <input className="bravo-search" value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} placeholder="Buscar cliente, camión o nota" />
+                <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--bravo-muted)]" />
+                <input className="bravo-search" value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} placeholder="Buscar cliente, camion o nota" />
               </div>
               <div className="bravo-filter-row">
                 {(["todos", "gasto", "pago", "viaje"] as FilterType[]).map((type) => (
@@ -674,8 +635,8 @@ export default function App() {
           )}
         </main>
 
-        <nav className="fixed bottom-0 left-0 right-0 z-40 mx-auto max-w-md border-t border-[var(--bravo-border)] bg-white/90 px-4 pb-[max(12px,env(safe-area-inset-bottom))] pt-2 backdrop-blur-xl">
-          <div className="grid grid-cols-3 gap-1">
+        <nav className="fixed bottom-0 left-0 right-0 z-40 mx-auto max-w-md border-t border-[var(--bravo-border)] bg-[var(--bravo-bg)]/88 px-4 pb-[max(12px,env(safe-area-inset-bottom))] pt-2 backdrop-blur-xl">
+          <div className="grid grid-cols-2 gap-1">
             {navItems.map((item) => (
               <button key={item.key} className={`bravo-nav-item ${activeTab === item.key ? "is-active" : ""}`} onClick={() => setActiveTab(item.key)}>
                 {item.icon}
@@ -687,11 +648,11 @@ export default function App() {
       </div>
 
       {selectedDetailItem && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/35 p-4 backdrop-blur-sm">
-          <div className="max-h-[82vh] w-full max-w-md overflow-hidden rounded-t-[28px] bg-white shadow-2xl sm:rounded-[28px]">
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/55 p-4 backdrop-blur-sm">
+          <div className="max-h-[82vh] w-full max-w-md overflow-hidden rounded-t-[28px] border border-[var(--bravo-border)] bg-[var(--bravo-surface)] shadow-2xl sm:rounded-[28px]">
             <div className="flex items-start justify-between border-b border-[var(--bravo-border)] p-5">
               <div>
-                <div className="flex items-center gap-2 text-sm font-medium text-[var(--bravo-blue)]">
+                <div className="flex items-center gap-2 text-sm font-medium text-[var(--bravo-muted)]">
                   {recordIcon(selectedDetailItem._type)}
                   <span>{recordLabel(selectedDetailItem._type)}</span>
                 </div>
@@ -706,9 +667,9 @@ export default function App() {
               <dl className="bravo-detail-list">
                 <Detail label="Monto" value={`$${money(activityAmount(selectedDetailItem))} MXN`} />
                 <Detail label="Cliente" value={selectedDetailItem.Cliente} />
-                <Detail label="Camión" value={getTruck(selectedDetailItem)} />
-                <Detail label="Método" value={getPaymentMethod(selectedDetailItem)} />
-                <Detail label="Ruta" value={selectedDetailItem.Origen || selectedDetailItem.Destino ? `${selectedDetailItem.Origen || "Origen"} → ${selectedDetailItem.Destino || "Destino"}` : ""} />
+                <Detail label="Camion" value={getTruck(selectedDetailItem)} />
+                <Detail label="Metodo" value={getPaymentMethod(selectedDetailItem)} />
+                <Detail label="Ruta" value={selectedDetailItem.Origen || selectedDetailItem.Destino ? `${selectedDetailItem.Origen || "Origen"} -> ${selectedDetailItem.Destino || "Destino"}` : ""} />
                 <Detail label="Material" value={selectedDetailItem.Material} />
                 <Detail label="Km" value={getKm(selectedDetailItem)} />
                 <Detail label="Nota" value={selectedDetailItem.Notas || selectedDetailItem.Observaciones} />
@@ -738,7 +699,7 @@ function ActivityList({ items, onSelect, empty }: { items: any[]; onSelect: (ite
         const status = getStatus(item);
         return (
           <button key={`${item.ID_gasto || item.ID_pago || item.ID_viaje || index}`} className="bravo-list-row" onClick={() => onSelect(item)}>
-            <span className={`bravo-list-icon ${item._type}`}>{recordIcon(item._type, "w-4 h-4")}</span>
+            <span className={`bravo-list-icon ${item._type}`}>{recordIcon(item._type, "h-4 w-4")}</span>
             <span className="min-w-0 flex-1 text-left">
               <span className="flex items-center gap-2">
                 <span className="truncate text-sm font-semibold">{activityTitle(item)}</span>
@@ -748,9 +709,7 @@ function ActivityList({ items, onSelect, empty }: { items: any[]; onSelect: (ite
             </span>
             <span className="text-right">
               <span className="block text-sm font-semibold tabular-nums">${money(activityAmount(item))}</span>
-              <span className={`bravo-status ${status === "pendiente_sync" ? "pending" : "synced"}`}>
-                {status === "pendiente_sync" ? "Pendiente" : "OK"}
-              </span>
+              <span className={`bravo-status ${status === "pendiente_sync" ? "pending" : "synced"}`}>{status === "pendiente_sync" ? "Pendiente" : "OK"}</span>
             </span>
           </button>
         );
@@ -791,12 +750,12 @@ function EvidenceUpload({
         <div key={slot.label} className="rounded-2xl border border-[var(--bravo-border)] p-3">
           <div className="flex items-center justify-between gap-3">
             <span className="text-xs font-semibold text-[var(--bravo-muted)]">{slot.label}</span>
-            {slot.value && slot.value !== OPTIONAL_DRIVE_PLACEHOLDER ? (
-              <a className="text-xs font-semibold text-[var(--bravo-blue)]" href={slot.value} target="_blank" rel="noreferrer">
+            {slot.value && slot.value !== PENDING_DRIVE ? (
+              <a className="text-xs font-semibold text-[var(--bravo-ink)]" href={slot.value} target="_blank" rel="noreferrer">
                 Ver en Drive
               </a>
             ) : (
-              <label className="inline-flex cursor-pointer items-center gap-1.5 text-xs font-semibold text-[var(--bravo-blue)]">
+              <label className="inline-flex cursor-pointer items-center gap-1.5 text-xs font-semibold text-[var(--bravo-ink)]">
                 {isUploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileText className="h-3.5 w-3.5" />}
                 <span>Subir</span>
                 <input
