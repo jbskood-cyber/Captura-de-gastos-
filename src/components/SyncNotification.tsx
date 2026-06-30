@@ -110,7 +110,7 @@ export default function SyncNotification({
               {pendingCount > 0
                 ? networkError
                   ? `Fallo: ${networkError}`
-                  : "Presiona para ver cola local"
+                  : "Toca para ver cola local"
                 : lastSyncedAt 
                   ? `Sincronizado: ${new Date(lastSyncedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
                   : "Todo guardado en Google Sheets"}
@@ -149,7 +149,7 @@ export default function SyncNotification({
       {isExpanded && pendingCount > 0 && pendingQueue.length > 0 && (
         <div className={`mt-3.5 pt-3.5 border-t ${isDarkMode ? "border-slate-800" : "border-slate-100"} space-y-2.5`}>
           <div className="text-[10px] uppercase tracking-wider text-slate-400 font-bold">
-            Cola de Sincronización Local
+            Cola de sincronización local
           </div>
           <div className="max-h-60 overflow-y-auto space-y-2 pr-1 custom-scrollbar">
             {pendingQueue.map((item, index) => {
@@ -168,7 +168,7 @@ export default function SyncNotification({
                 ? record.Categoría 
                 : isPago 
                 ? record.Cliente 
-                : `${record.Material || "Material"} (${record.Origen || "Origen"} ➔ ${record.Destino || "Destino"})`;
+                : `${record.Material || "Material"} (${record.Origen || "Origen"} → ${record.Destino || "Destino"})`;
 
               const amount = isGasto 
                 ? record.Monto_MXN 
@@ -243,8 +243,8 @@ export default function SyncNotification({
                 {isOnline 
                   ? isSyncing 
                     ? "Sincronizando..." 
-                    : "Reintentar Sincronizar Cola"
-                  : "Sin Conexión (Reintento deshabilitado)"}
+                    : "Reintentar sincronización"
+                  : "Sin conexión"}
               </span>
             </button>
           </div>

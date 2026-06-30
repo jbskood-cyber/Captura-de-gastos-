@@ -86,7 +86,7 @@ export default function AudioCapture({ onAudioCaptured, isProcessing, isDarkMode
       isDarkMode ? "bg-slate-900 border border-slate-800" : "bg-white border border-slate-100 shadow-xs"
     }`}>
       <div className="text-center">
-        <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">Captura de Voz</span>
+        <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">Captura de voz</span>
         <h3 className={`text-sm mt-1 ${isDarkMode ? "text-slate-300" : "text-slate-500"}`}>
           {isRecording ? "Grabando nota de voz..." : audioUrl ? "Audio grabado" : "Presiona para grabar tu reporte"}
         </h3>

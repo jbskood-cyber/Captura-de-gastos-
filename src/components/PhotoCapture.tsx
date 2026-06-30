@@ -111,7 +111,7 @@ export default function PhotoCapture({ onPhotoCaptured, isProcessing, isDarkMode
           </div>
           <div className="space-y-1">
             <h4 className={`text-sm font-medium ${isDarkMode ? "text-slate-200" : "text-slate-700"}`}>Toma una foto de tu ticket/evidencia</h4>
-            <p className="text-xs text-slate-400">Suelta tu imagen aquí o haz clic en un botón</p>
+            <p className="text-xs text-slate-400">Suelta tu imagen aquí o elige una opción</p>
           </div>
 
           <div className="flex items-center space-x-3 w-full">
@@ -129,7 +129,7 @@ export default function PhotoCapture({ onPhotoCaptured, isProcessing, isDarkMode
               className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white text-xs font-semibold rounded-xl transition-all disabled:opacity-50 shadow-sm"
             >
               <Camera className="w-4 h-4" />
-              <span>Abrir Cámara</span>
+              <span>Abrir cámara</span>
             </button>
             <button
               type="button"
@@ -146,7 +146,7 @@ export default function PhotoCapture({ onPhotoCaptured, isProcessing, isDarkMode
               }`}
             >
               <Image className={`w-4 h-4 ${isDarkMode ? "text-slate-400" : "text-slate-500"}`} />
-              <span>Galería/Archivo</span>
+              <span>Galería</span>
             </button>
           </div>
         </div>

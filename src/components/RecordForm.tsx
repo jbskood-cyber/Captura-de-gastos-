@@ -1,7 +1,16 @@
-import React, { useState, useEffect } from "react";
-import { Gasto, Pago, Viaje, ValidationState, IAConfidence, RecordType } from "../types";
-import { AlertCircle, CheckCircle2, Trash2, ArrowLeft, Landmark, Truck, Wallet, FileText, Upload, Link, Loader2, ChevronDown, ChevronUp } from "lucide-react";
-import { uploadFileToDrive } from "../services/googleWorkspace";
+import React, { useEffect, useMemo, useState } from "react";
+import {
+  ArrowLeft,
+  CheckCircle2,
+  ChevronDown,
+  ChevronUp,
+  FileText,
+  Landmark,
+  Trash2,
+  Truck,
+  Wallet,
+} from "lucide-react";
+import { IAConfidence, RecordType, ValidationState } from "../types";
 
 interface RecordFormProps {
   type: RecordType;
@@ -15,904 +24,341 @@ interface RecordFormProps {
   onCancel: () => void;
 }
 
+const get = (data: any, ...keys: string[]) => {
+  for (const key of keys) {
+    if (data?.[key] !== undefined && data?.[key] !== null && data?.[key] !== "") return data[key];
+  }
+  return "";
+};
+
+const numberFrom = (value: unknown, fallback = 0) => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+};
+
+const formTitle = {
+  gasto: "Revisar gasto",
+  pago: "Revisar pago",
+  viaje: "Revisar viaje",
+};
+
+const confidenceCopy: Record<IAConfidence, string> = {
+  alta: "Campos detectados con alta confianza.",
+  media: "Revisa los campos clave antes de guardar.",
+  baja: "Completa manualmente los datos esenciales.",
+};
+
 export default function RecordForm({
   type,
   initialData,
   camiones,
   clientes,
   userEmail,
-  token,
-  isDarkMode = false,
   onSave,
   onCancel,
 }: RecordFormProps) {
   const [formData, setFormData] = useState<any>({});
-  const [isUploading, setIsUploading] = useState(false);
-  const [isUploadingDescarga, setIsUploadingDescarga] = useState(false);
   const [showOptional, setShowOptional] = useState(false);
 
   useEffect(() => {
-    // Generate unique IDs and timestamps if missing
     const now = new Date();
     const currentDate = now.toISOString().split("T")[0];
     const currentTime = now.toTimeString().split(" ")[0];
     const randomId = Math.floor(10000 + Math.random() * 90000);
-
-    const defaultBase = {
-      Fecha: currentDate,
-      Hora: currentTime,
-      Registrado_por: userEmail || "usuario@transportebravo.com",
-      Notas: "",
-      Created_at: now.toISOString(),
+    const base = {
+      Fecha: get(initialData, "Fecha") || currentDate,
+      Hora: get(initialData, "Hora") || currentTime,
+      Registrado_por: get(initialData, "Registrado_por") || userEmail || "usuario@transportebravo.com",
+      Notas: get(initialData, "Notas"),
+      Created_at: get(initialData, "Created_at") || now.toISOString(),
       Updated_at: now.toISOString(),
     };
 
     if (type === "gasto") {
       setFormData({
-        ID_gasto: initialData.ID_gasto || `G-${randomId}`,
-        Tipo_entrada: initialData.Tipo_entrada || "texto",
-        Categoría: initialData.Categoría || "Diésel",
-        Subcategoría: initialData.Subcategoría || "",
-        Monto_MXN: Number(initialData.Monto_MXN) || 0,
-        Método_pago: initialData.Método_pago || "Efectivo",
-        Camión: initialData.Camión || (camiones[0] || ""),
-        Chofer: initialData.Chofer || "",
-        Cliente: initialData.Cliente || "",
-        Viaje_ID: initialData.Viaje_ID || "",
-        Proveedor: initialData.Proveedor || "",
+        ID_gasto: get(initialData, "ID_gasto") || `G-${randomId}`,
+        Tipo_entrada: get(initialData, "Tipo_entrada") || "texto",
+        Categoría: get(initialData, "Categoría", "Categoria", "CategorÃ­a") || "Diésel",
+        Subcategoría: get(initialData, "Subcategoría", "Subcategoria", "SubcategorÃ­a"),
+        Monto_MXN: numberFrom(get(initialData, "Monto_MXN")),
+        Método_pago: get(initialData, "Método_pago", "Metodo_pago", "MÃ©todo_pago") || "Efectivo",
+        Camión: get(initialData, "Camión", "Camion", "CamiÃ³n") || camiones[0] || "",
+        Chofer: get(initialData, "Chofer"),
+        Cliente: get(initialData, "Cliente"),
+        Viaje_ID: get(initialData, "Viaje_ID"),
+        Proveedor: get(initialData, "Proveedor"),
         Estado_validación: "revisar",
-        Confianza_IA: initialData.Confianza_IA || "media",
-        URL_evidencia_Drive: initialData.URL_evidencia_Drive || "",
-        ...defaultBase,
-        ...initialData,
-      });
-    } else if (type === "pago") {
-      setFormData({
-        ID_pago: initialData.ID_pago || `P-${randomId}`,
-        Cliente: initialData.Cliente || (clientes[0] || ""),
-        Monto_MXN: Number(initialData.Monto_MXN) || 0,
-        Método_pago: initialData.Método_pago || "Transferencia",
-        Viaje_ID: initialData.Viaje_ID || "",
-        Saldo_restante_MXN: Number(initialData.Saldo_restante_MXN) || 0,
-        Estado_pago: initialData.Estado_pago || "liquidado",
-        URL_evidencia_Drive: initialData.URL_evidencia_Drive || "",
-        ...defaultBase,
-        ...initialData,
-      });
-    } else if (type === "viaje") {
-      setFormData({
-        ID_viaje: initialData.ID_viaje || `V-${randomId}`,
-        Cliente: initialData.Cliente || (clientes[0] || ""),
-        Origen: initialData.Origen || "",
-        Destino: initialData.Destino || "",
-        Material: initialData.Material || "Arena",
-        Metros_cubicos: Number(initialData.Metros_cubicos) || 7,
-        Kilómetros: Number(initialData.Kilómetros) || 0,
-        Camión: initialData.Camión || (camiones[0] || ""),
-        Chofer: initialData.Chofer || "",
-        Precio_cobrado_MXN: Number(initialData.Precio_cobrado_MXN) || 0,
-        Costo_estimado_MXN: Number(initialData.Costo_estimado_MXN) || 0,
-        Utilidad_estimada_MXN: Number(initialData.Utilidad_estimada_MXN) || 0,
-        Estado_pago: initialData.Estado_pago || "pendiente",
-        URL_evidencia_carga: initialData.URL_evidencia_carga || "",
-        URL_evidencia_descarga: initialData.URL_evidencia_descarga || "",
-        Observaciones: initialData.Observaciones || "",
-        ...defaultBase,
-        ...initialData,
+        Confianza_IA: get(initialData, "Confianza_IA") || "media",
+        URL_evidencia_Drive: get(initialData, "URL_evidencia_Drive"),
+        ...base,
       });
     }
-  }, [type, initialData, camiones, clientes, userEmail]);
 
-  // Recalculate estimated utility for voyages
-  useEffect(() => {
+    if (type === "pago") {
+      setFormData({
+        ID_pago: get(initialData, "ID_pago") || `P-${randomId}`,
+        Cliente: get(initialData, "Cliente") || clientes[0] || "",
+        Monto_MXN: numberFrom(get(initialData, "Monto_MXN")),
+        Método_pago: get(initialData, "Método_pago", "Metodo_pago", "MÃ©todo_pago") || "Transferencia",
+        Viaje_ID: get(initialData, "Viaje_ID"),
+        Saldo_restante_MXN: numberFrom(get(initialData, "Saldo_restante_MXN")),
+        Estado_pago: get(initialData, "Estado_pago") || "liquidado",
+        URL_evidencia_Drive: get(initialData, "URL_evidencia_Drive"),
+        ...base,
+      });
+    }
+
     if (type === "viaje") {
-      const cobrado = Number(formData.Precio_cobrado_MXN) || 0;
-      const costo = Number(formData.Costo_estimado_MXN) || 0;
-      const utilidad = Math.max(0, cobrado - costo);
-      if (formData.Utilidad_estimada_MXN !== utilidad) {
-        setFormData((prev: any) => ({ ...prev, Utilidad_estimada_MXN: utilidad }));
-      }
+      setFormData({
+        ID_viaje: get(initialData, "ID_viaje") || `V-${randomId}`,
+        Cliente: get(initialData, "Cliente") || clientes[0] || "",
+        Origen: get(initialData, "Origen"),
+        Destino: get(initialData, "Destino"),
+        Material: get(initialData, "Material") || "Arena",
+        Metros_cubicos: numberFrom(get(initialData, "Metros_cubicos"), 7),
+        Kilómetros: numberFrom(get(initialData, "Kilómetros", "Kilometros", "KilÃ³metros")),
+        Camión: get(initialData, "Camión", "Camion", "CamiÃ³n") || camiones[0] || "",
+        Chofer: get(initialData, "Chofer"),
+        Precio_cobrado_MXN: numberFrom(get(initialData, "Precio_cobrado_MXN")),
+        Costo_estimado_MXN: numberFrom(get(initialData, "Costo_estimado_MXN")),
+        Utilidad_estimada_MXN: numberFrom(get(initialData, "Utilidad_estimada_MXN")),
+        Estado_pago: get(initialData, "Estado_pago") || "pendiente",
+        URL_evidencia_carga: get(initialData, "URL_evidencia_carga"),
+        URL_evidencia_descarga: get(initialData, "URL_evidencia_descarga"),
+        Observaciones: get(initialData, "Observaciones", "Notas"),
+        ...base,
+      });
     }
-  }, [formData.Precio_cobrado_MXN, formData.Costo_estimado_MXN, type]);
+  }, [camiones, clientes, initialData, type, userEmail]);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setFormData((prev: any) => ({
-      ...prev,
-      [name]: value,
-    }));
+  useEffect(() => {
+    if (type !== "viaje") return;
+    const utilidad = Math.max(0, numberFrom(formData.Precio_cobrado_MXN) - numberFrom(formData.Costo_estimado_MXN));
+    if (formData.Utilidad_estimada_MXN !== utilidad) {
+      setFormData((prev: any) => ({ ...prev, Utilidad_estimada_MXN: utilidad }));
+    }
+  }, [formData.Costo_estimado_MXN, formData.Precio_cobrado_MXN, formData.Utilidad_estimada_MXN, type]);
+
+  const confidence = useMemo(() => {
+    const value = formData.Confianza_IA as IAConfidence;
+    return value === "alta" || value === "media" || value === "baja" ? value : null;
+  }, [formData.Confianza_IA]);
+
+  const handleChange = (event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+    const { name, value } = event.target;
+    setFormData((prev: any) => ({ ...prev, [name]: value }));
   };
 
-  const handleNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setFormData((prev: any) => ({
-      ...prev,
-      [name]: Number(value) || 0,
-    }));
+  const handleNumberChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = event.target;
+    setFormData((prev: any) => ({ ...prev, [name]: Number(value) || 0 }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    // Mark validation status as validated when confirmed by user
-    const finalized = {
+  const handleSubmit = (event: React.FormEvent) => {
+    event.preventDefault();
+    onSave({
       ...formData,
       Estado_validación: "validado" as ValidationState,
+      Estado_validacion: "validado" as ValidationState,
       Updated_at: new Date().toISOString(),
-    };
-    onSave(finalized);
-  };
-
-  const confidenceColors = {
-    alta: "bg-emerald-50 text-emerald-700 border-emerald-100",
-    media: "bg-amber-50 text-amber-700 border-amber-100",
-    baja: "bg-rose-50 text-rose-700 border-rose-100",
-  };
-
-  const confidenceText = {
-    alta: "IA detectó los campos con alta confianza. Verifica brevemente.",
-    media: "Faltan algunos detalles. Revisa y completa los campos vacíos.",
-    baja: "Confianza baja. Completa la mayor parte de los campos manualmente.",
+    });
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6 pb-24">
-      {/* Top Header Navigation */}
-      <div className="flex items-center justify-between border-b border-slate-100 pb-4">
-        <button
-          type="button"
-          onClick={onCancel}
-          className="flex items-center gap-1.5 text-slate-500 hover:text-slate-800 text-sm font-medium transition-all"
-        >
-          <ArrowLeft className="w-4 h-4" />
+    <form onSubmit={handleSubmit} className="space-y-6 pb-4">
+      <div className="flex items-center justify-between">
+        <button type="button" onClick={onCancel} className="bravo-ghost-button">
+          <ArrowLeft className="h-4 w-4" />
           <span>Volver</span>
         </button>
-        <span className="text-xs font-semibold uppercase tracking-wider text-slate-400 bg-slate-50 px-2.5 py-1 rounded-full border border-slate-100">
-          ID: {type === "gasto" ? formData.ID_gasto : type === "pago" ? formData.ID_pago : formData.ID_viaje}
-        </span>
+        <span className="bravo-id-chip">{formData.ID_gasto || formData.ID_pago || formData.ID_viaje}</span>
       </div>
 
-      {/* AI Confidence Banner */}
-      {formData.Confianza_IA && (
-        <div
-          id="confidence-banner"
-          className={`border rounded-xl p-4 flex gap-3 items-start ${
-            confidenceColors[formData.Confianza_IA as IAConfidence] || confidenceColors.media
-          }`}
-        >
-          <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
-          <div>
-            <div className="text-xs font-bold uppercase tracking-wide">
-              Confianza de la IA: {formData.Confianza_IA}
-            </div>
-            <p className="text-xs mt-0.5 opacity-90">
-              {confidenceText[formData.Confianza_IA as IAConfidence] || confidenceText.media}
-            </p>
-          </div>
+      <section>
+        <div className="flex items-center gap-2 text-[var(--bravo-blue)]">
+          {type === "gasto" && <Wallet className="h-5 w-5" />}
+          {type === "pago" && <Landmark className="h-5 w-5" />}
+          {type === "viaje" && <Truck className="h-5 w-5" />}
+          <span className="text-sm font-medium">Captura rápida</span>
+        </div>
+        <h1 className="mt-3 text-[30px] font-semibold leading-tight">{formTitle[type]}</h1>
+        <p className="mt-2 text-[15px] text-[var(--bravo-muted)]">Confirma lo esencial. Los detalles pueden quedarse plegados.</p>
+      </section>
+
+      {confidence && (
+        <div className={`bravo-confidence ${confidence}`}>
+          <FileText className="h-4 w-4" />
+          <span>{confidenceCopy[confidence]}</span>
         </div>
       )}
 
-      {/* Title */}
-      <div className="flex items-center gap-2 px-1">
-        {type === "gasto" ? (
-          <Wallet className="w-5 h-5 text-red-500" />
-        ) : type === "pago" ? (
-          <Landmark className="w-5 h-5 text-emerald-500" />
-        ) : (
-          <Truck className="w-5 h-5 text-blue-500" />
-        )}
-        <h2 className="text-lg font-bold text-slate-800 capitalize">
-          Revisar {type === "gasto" ? "Gasto" : type === "pago" ? "Pago" : "Viaje"}
-        </h2>
-      </div>
-
-      <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-xs space-y-4">
-        {/* --- ESSENTIAL FIELDS --- */}
+      <section className="bravo-form-panel space-y-4">
         {type === "gasto" && (
           <>
-            <div>
-              <label className="block text-xs font-semibold text-slate-400 mb-1">Monto (MXN)</label>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-slate-400">$</span>
-                <input
-                  type="number"
-                  name="Monto_MXN"
-                  value={formData.Monto_MXN || ""}
-                  onChange={handleNumberChange}
-                  className="w-full text-sm bg-slate-50 border border-slate-100 rounded-xl pl-8 pr-3 py-2.5 focus:bg-white focus:ring-1 focus:ring-blue-500 outline-hidden transition-all font-semibold font-mono"
-                  required
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-semibold text-slate-400 mb-1">Categoría</label>
-                <select
-                  name="Categoría"
-                  value={formData.Categoría || ""}
-                  onChange={handleChange}
-                  className="w-full text-sm bg-slate-50 border border-slate-100 rounded-xl px-3 py-2.5 focus:bg-white focus:ring-1 focus:ring-blue-500 outline-hidden transition-all"
-                >
-                  <option value="Diésel">Diésel</option>
-                  <option value="Refacciones">Refacciones</option>
-                  <option value="Casetas">Casetas (Peajes)</option>
-                  <option value="Sueldo Chofer">Sueldo Chofer</option>
-                  <option value="Comida">Comida / Viáticos</option>
-                  <option value="Mantenimiento">Mantenimiento</option>
-                  <option value="Otros">Otros</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-400 mb-1">Camión</label>
-                <select
-                  name="Camión"
-                  value={formData.Camión || ""}
-                  onChange={handleChange}
-                  className="w-full text-sm bg-slate-50 border border-slate-100 rounded-xl px-3 py-2.5 focus:bg-white focus:ring-1 focus:ring-blue-500 outline-hidden"
-                >
-                  <option value="">{camiones.length === 0 ? "No hay datos cargados todavía" : "-- Selecciona camión --"}</option>
-                  {camiones.map((c) => (
-                    <option key={c} value={c}>{c}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-slate-400 mb-1">Método de Pago</label>
-              <select
-                name="Método_pago"
-                value={formData.Método_pago || ""}
-                onChange={handleChange}
-                className="w-full text-sm bg-slate-50 border border-slate-100 rounded-xl px-3 py-2.5 focus:bg-white focus:ring-1 focus:ring-blue-500 outline-hidden transition-all"
-              >
-                <option value="Efectivo">Efectivo</option>
-                <option value="Transferencia">Transferencia</option>
-                <option value="Tarjeta">Tarjeta de Crédito/Débito</option>
-                <option value="Vales">Vales Combustible</option>
-              </select>
-            </div>
+            <MoneyInput label="Monto" name="Monto_MXN" value={formData.Monto_MXN} onChange={handleNumberChange} required />
+            <SelectInput label="Categoría" name="Categoría" value={formData.Categoría} onChange={handleChange} options={["Diésel", "Refacciones", "Casetas", "Sueldo Chofer", "Comida", "Mantenimiento", "Otros"]} />
+            <SelectInput label="Camión" name="Camión" value={formData.Camión} onChange={handleChange} options={camiones} placeholder="Selecciona camión" />
+            <SelectInput label="Método de pago" name="Método_pago" value={formData.Método_pago} onChange={handleChange} options={["Efectivo", "Transferencia", "Tarjeta", "Vales"]} />
+            <NoteInput name="Notas" value={formData.Notas} onChange={handleChange} />
           </>
         )}
 
         {type === "pago" && (
           <>
-            <div>
-              <label className="block text-xs font-semibold text-slate-400 mb-1">Cliente</label>
-              <select
-                name="Cliente"
-                value={formData.Cliente || ""}
-                onChange={handleChange}
-                className="w-full text-sm bg-slate-50 border border-slate-100 rounded-xl px-3 py-2.5 focus:bg-white focus:ring-1 focus:ring-blue-500 outline-hidden"
-                required
-              >
-                <option value="">{clientes.length === 0 ? "No hay datos cargados todavía" : "-- Selecciona Cliente --"}</option>
-                {clientes.map((cl) => (
-                  <option key={cl} value={cl}>{cl}</option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-slate-400 mb-1">Monto Recibido (MXN)</label>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-slate-400">$</span>
-                <input
-                  type="number"
-                  name="Monto_MXN"
-                  value={formData.Monto_MXN || ""}
-                  onChange={handleNumberChange}
-                  className="w-full text-sm bg-slate-50 border border-slate-100 rounded-xl pl-8 pr-3 py-2.5 focus:bg-white focus:ring-1 focus:ring-blue-500 outline-hidden transition-all font-semibold font-mono"
-                  required
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-slate-400 mb-1">Método de Pago</label>
-              <select
-                name="Método_pago"
-                value={formData.Método_pago || ""}
-                onChange={handleChange}
-                className="w-full text-sm bg-slate-50 border border-slate-100 rounded-xl px-3 py-2.5 focus:bg-white focus:ring-1 focus:ring-blue-500 outline-hidden transition-all"
-              >
-                <option value="Transferencia">Transferencia</option>
-                <option value="Efectivo">Efectivo</option>
-                <option value="Cheque">Cheque</option>
-                <option value="Tarjeta">Tarjeta</option>
-              </select>
-            </div>
+            <SelectInput label="Cliente" name="Cliente" value={formData.Cliente} onChange={handleChange} options={clientes} placeholder="Selecciona cliente" required />
+            <MoneyInput label="Monto" name="Monto_MXN" value={formData.Monto_MXN} onChange={handleNumberChange} required />
+            <SelectInput label="Método de pago" name="Método_pago" value={formData.Método_pago} onChange={handleChange} options={["Transferencia", "Efectivo", "Cheque", "Tarjeta"]} />
+            <NoteInput name="Notas" value={formData.Notas} onChange={handleChange} />
           </>
         )}
 
         {type === "viaje" && (
           <>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-semibold text-slate-400 mb-1">Cliente</label>
-                <select
-                  name="Cliente"
-                  value={formData.Cliente || ""}
-                  onChange={handleChange}
-                  className="w-full text-sm bg-slate-50 border border-slate-100 rounded-xl px-3 py-2.5 focus:bg-white focus:ring-1 focus:ring-blue-500 outline-hidden"
-                  required
-                >
-                  <option value="">{clientes.length === 0 ? "No hay datos cargados todavía" : "-- Selecciona Cliente --"}</option>
-                  {clientes.map((cl) => (
-                    <option key={cl} value={cl}>{cl}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-400 mb-1">Camión</label>
-                <select
-                  name="Camión"
-                  value={formData.Camión || ""}
-                  onChange={handleChange}
-                  className="w-full text-sm bg-slate-50 border border-slate-100 rounded-xl px-3 py-2.5 focus:bg-white focus:ring-1 focus:ring-blue-500 outline-hidden"
-                  required
-                >
-                  <option value="">{camiones.length === 0 ? "No hay datos cargados todavía" : "-- Selecciona camión --"}</option>
-                  {camiones.map((c) => (
-                    <option key={c} value={c}>{c}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-semibold text-slate-400 mb-1">Origen (Carga)</label>
-                <input
-                  type="text"
-                  name="Origen"
-                  placeholder="Lugar de carga"
-                  value={formData.Origen || ""}
-                  onChange={handleChange}
-                  className="w-full text-sm bg-slate-50 border border-slate-100 rounded-xl px-3 py-2.5 focus:bg-white focus:ring-1 focus:ring-blue-500 outline-hidden transition-all"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-400 mb-1">Destino (Entrega)</label>
-                <input
-                  type="text"
-                  name="Destino"
-                  placeholder="Lugar de descarga"
-                  value={formData.Destino || ""}
-                  onChange={handleChange}
-                  className="w-full text-sm bg-slate-50 border border-slate-100 rounded-xl px-3 py-2.5 focus:bg-white focus:ring-1 focus:ring-blue-500 outline-hidden transition-all"
-                  required
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-semibold text-slate-400 mb-1">Material</label>
-                <select
-                  name="Material"
-                  value={formData.Material || ""}
-                  onChange={handleChange}
-                  className="w-full text-sm bg-slate-50 border border-slate-100 rounded-xl px-3 py-2.5 focus:bg-white focus:ring-1 focus:ring-blue-500 outline-hidden transition-all"
-                >
-                  <option value="Arena">Arena</option>
-                  <option value="Grava">Grava</option>
-                  <option value="Asfalto">Asfalto</option>
-                  <option value="Piedra">Piedra / Base</option>
-                  <option value="Tierra">Tierra / Tezontle</option>
-                  <option value="Otro">Otro</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-400 mb-1">Precio Cobrado (MXN)</label>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-slate-400">$</span>
-                  <input
-                    type="number"
-                    name="Precio_cobrado_MXN"
-                    value={formData.Precio_cobrado_MXN || ""}
-                    onChange={handleNumberChange}
-                    className="w-full text-sm bg-slate-50 border border-slate-100 rounded-xl pl-8 pr-3 py-2.5 focus:bg-white focus:ring-1 focus:ring-blue-500 outline-hidden transition-all font-semibold font-mono"
-                    required
-                  />
-                </div>
-              </div>
-            </div>
+            <SelectInput label="Cliente" name="Cliente" value={formData.Cliente} onChange={handleChange} options={clientes} placeholder="Selecciona cliente" required />
+            <TextInput label="Origen" name="Origen" value={formData.Origen} onChange={handleChange} required />
+            <TextInput label="Destino" name="Destino" value={formData.Destino} onChange={handleChange} required />
+            <SelectInput label="Material" name="Material" value={formData.Material} onChange={handleChange} options={["Arena", "Grava", "Asfalto", "Piedra", "Tierra", "Otro"]} />
+            <SelectInput label="Camión" name="Camión" value={formData.Camión} onChange={handleChange} options={camiones} placeholder="Selecciona camión" required />
+            <MoneyInput label="Precio" name="Precio_cobrado_MXN" value={formData.Precio_cobrado_MXN} onChange={handleNumberChange} required />
+            <NoteInput name="Observaciones" value={formData.Observaciones} onChange={handleChange} />
           </>
         )}
 
-        {/* --- COLLAPSIBLE OPTIONAL SECTION --- */}
-        <div className="pt-2">
-          <button
-            type="button"
-            onClick={() => setShowOptional(!showOptional)}
-            className="w-full flex items-center justify-between py-2.5 px-4 border border-slate-100 rounded-xl bg-slate-50 hover:bg-slate-100/80 text-xs font-semibold text-slate-600 transition-all cursor-pointer"
-          >
-            <span>Detalles opcionales</span>
-            {showOptional ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
-          </button>
-        </div>
+        <button type="button" className="bravo-disclosure" onClick={() => setShowOptional(!showOptional)}>
+          <span>Detalles opcionales</span>
+          {showOptional ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+        </button>
 
         {showOptional && (
-          <div className="space-y-4 pt-2 animate-fadeIn">
-            {/* Date & Time fields */}
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-semibold text-slate-400 mb-1">Fecha</label>
-                <input
-                  type="date"
-                  name="Fecha"
-                  value={formData.Fecha || ""}
-                  onChange={handleChange}
-                  className="w-full text-sm bg-slate-50 border border-slate-100 rounded-xl px-3 py-2.5 focus:bg-white focus:ring-1 focus:ring-blue-500 outline-hidden transition-all font-mono"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-slate-400 mb-1">Hora</label>
-                <input
-                  type="time"
-                  name="Hora"
-                  value={formData.Hora || ""}
-                  onChange={handleChange}
-                  className="w-full text-sm bg-slate-50 border border-slate-100 rounded-xl px-3 py-2.5 focus:bg-white focus:ring-1 focus:ring-blue-500 outline-hidden transition-all font-mono"
-                />
-              </div>
+          <div className="space-y-4 border-t border-[var(--bravo-border)] pt-4">
+            <div className="grid grid-cols-2 gap-3">
+              <TextInput label="Fecha" name="Fecha" type="date" value={formData.Fecha} onChange={handleChange} />
+              <TextInput label="Hora" name="Hora" type="time" value={String(formData.Hora || "").slice(0, 5)} onChange={handleChange} />
             </div>
 
             {type === "gasto" && (
               <>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-400 mb-1">Subcategoría</label>
-                    <input
-                      type="text"
-                      name="Subcategoría"
-                      placeholder="Ej: Filtro, Llantas"
-                      value={formData.Subcategoría || ""}
-                      onChange={handleChange}
-                      className="w-full text-sm bg-slate-50 border border-slate-100 rounded-xl px-3 py-2.5 focus:bg-white focus:ring-1 focus:ring-blue-500 outline-hidden transition-all"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-400 mb-1">Chofer</label>
-                    <input
-                      type="text"
-                      name="Chofer"
-                      placeholder="Nombre de chofer"
-                      value={formData.Chofer || ""}
-                      onChange={handleChange}
-                      className="w-full text-sm bg-slate-50 border border-slate-100 rounded-xl px-3 py-2.5 focus:bg-white focus:ring-1 focus:ring-blue-500 outline-hidden transition-all"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-400 mb-1">Proveedor</label>
-                    <input
-                      type="text"
-                      name="Proveedor"
-                      placeholder="Gasolinera, etc."
-                      value={formData.Proveedor || ""}
-                      onChange={handleChange}
-                      className="w-full text-sm bg-slate-50 border border-slate-100 rounded-xl px-3 py-2.5 focus:bg-white focus:ring-1 focus:ring-blue-500 outline-hidden transition-all"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-400 mb-1">Viaje ID</label>
-                    <input
-                      type="text"
-                      name="Viaje_ID"
-                      placeholder="Ej: V-1002"
-                      value={formData.Viaje_ID || ""}
-                      onChange={handleChange}
-                      className="w-full text-sm bg-slate-50 border border-slate-100 rounded-xl px-3 py-2.5 focus:bg-white focus:ring-1 focus:ring-blue-500 outline-hidden transition-all font-mono"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-slate-400 mb-1">Cliente asociado</label>
-                  <select
-                    name="Cliente"
-                    value={formData.Cliente || ""}
-                    onChange={handleChange}
-                    className="w-full text-sm bg-slate-50 border border-slate-100 rounded-xl px-3 py-2.5 focus:bg-white focus:ring-1 focus:ring-blue-500 outline-hidden"
-                  >
-                    <option value="">{clientes.length === 0 ? "No hay datos cargados todavía" : "-- Ninguno --"}</option>
-                    {clientes.map((cl) => (
-                      <option key={cl} value={cl}>{cl}</option>
-                    ))}
-                  </select>
-                </div>
+                <TextInput label="Subcategoría" name="Subcategoría" value={formData.Subcategoría} onChange={handleChange} />
+                <TextInput label="Proveedor" name="Proveedor" value={formData.Proveedor} onChange={handleChange} />
+                <TextInput label="Chofer" name="Chofer" value={formData.Chofer} onChange={handleChange} />
+                <SelectInput label="Cliente" name="Cliente" value={formData.Cliente} onChange={handleChange} options={clientes} placeholder="Opcional" />
+                <TextInput label="Viaje ID" name="Viaje_ID" value={formData.Viaje_ID} onChange={handleChange} />
               </>
             )}
 
             {type === "pago" && (
               <>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-400 mb-1">Saldo Restante (MXN)</label>
-                    <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-slate-400">$</span>
-                      <input
-                        type="number"
-                        name="Saldo_restante_MXN"
-                        value={formData.Saldo_restante_MXN || ""}
-                        onChange={handleNumberChange}
-                        className="w-full text-sm bg-slate-50 border border-slate-100 rounded-xl pl-8 pr-3 py-2.5 focus:bg-white focus:ring-1 focus:ring-blue-500 outline-hidden transition-all font-mono"
-                      />
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-400 mb-1">Estado del Pago</label>
-                    <select
-                      name="Estado_pago"
-                      value={formData.Estado_pago || ""}
-                      onChange={handleChange}
-                      className="w-full text-sm bg-slate-50 border border-slate-100 rounded-xl px-3 py-2.5 focus:bg-white focus:ring-1 focus:ring-blue-500 outline-hidden transition-all"
-                    >
-                      <option value="liquidado">Liquidado</option>
-                      <option value="parcial">Abono Parcial</option>
-                      <option value="pendiente">Pendiente</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-slate-400 mb-1">Viaje ID Asociado</label>
-                  <input
-                    type="text"
-                    name="Viaje_ID"
-                    placeholder="Ej: V-1002"
-                    value={formData.Viaje_ID || ""}
-                    onChange={handleChange}
-                    className="w-full text-sm bg-slate-50 border border-slate-100 rounded-xl px-3 py-2.5 focus:bg-white focus:ring-1 focus:ring-blue-500 outline-hidden transition-all font-mono"
-                  />
-                </div>
+                <MoneyInput label="Saldo restante" name="Saldo_restante_MXN" value={formData.Saldo_restante_MXN} onChange={handleNumberChange} />
+                <SelectInput label="Estado de pago" name="Estado_pago" value={formData.Estado_pago} onChange={handleChange} options={["liquidado", "parcial", "pendiente"]} />
+                <TextInput label="Viaje ID" name="Viaje_ID" value={formData.Viaje_ID} onChange={handleChange} />
               </>
             )}
 
             {type === "viaje" && (
               <>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-400 mb-1">Metros Cúbicos</label>
-                    <input
-                      type="number"
-                      name="Metros_cubicos"
-                      value={formData.Metros_cubicos || ""}
-                      onChange={handleNumberChange}
-                      className="w-full text-sm bg-slate-50 border border-slate-100 rounded-xl px-3 py-2.5 focus:bg-white focus:ring-1 focus:ring-blue-500 outline-hidden transition-all font-mono"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-400 mb-1">Kilómetros</label>
-                    <input
-                      type="number"
-                      name="Kilómetros"
-                      value={formData.Kilómetros || ""}
-                      onChange={handleNumberChange}
-                      className="w-full text-sm bg-slate-50 border border-slate-100 rounded-xl px-3 py-2.5 focus:bg-white focus:ring-1 focus:ring-blue-500 outline-hidden transition-all font-mono"
-                    />
-                  </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <TextInput label="M3" name="Metros_cubicos" type="number" value={formData.Metros_cubicos} onChange={handleNumberChange} />
+                  <TextInput label="Km" name="Kilómetros" type="number" value={formData.Kilómetros} onChange={handleNumberChange} />
                 </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-400 mb-1">Chofer</label>
-                    <input
-                      type="text"
-                      name="Chofer"
-                      placeholder="Nombre chofer"
-                      value={formData.Chofer || ""}
-                      onChange={handleChange}
-                      className="w-full text-sm bg-slate-50 border border-slate-100 rounded-xl px-3 py-2.5 focus:bg-white focus:ring-1 focus:ring-blue-500 outline-hidden transition-all"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-400 mb-1">Estado de Pago</label>
-                    <select
-                      name="Estado_pago"
-                      value={formData.Estado_pago || ""}
-                      onChange={handleChange}
-                      className="w-full text-sm bg-slate-50 border border-slate-100 rounded-xl px-3 py-2.5 focus:bg-white focus:ring-1 focus:ring-blue-500 outline-hidden transition-all"
-                    >
-                      <option value="pendiente">Pendiente</option>
-                      <option value="parcial">Parcial</option>
-                      <option value="pagado">Pagado</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-slate-400 mb-1">Costo Estimado (MXN)</label>
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-slate-400">$</span>
-                    <input
-                      type="number"
-                      name="Costo_estimado_MXN"
-                      value={formData.Costo_estimado_MXN || ""}
-                      onChange={handleNumberChange}
-                      className="w-full text-sm bg-slate-50 border border-slate-100 rounded-xl pl-8 pr-3 py-2.5 focus:bg-white focus:ring-1 focus:ring-blue-500 outline-hidden transition-all font-mono"
-                    />
-                  </div>
-                </div>
-
-                <div className="bg-slate-50 border border-slate-100 rounded-xl p-3">
-                  <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Utilidad Est. (MXN)</span>
-                  <span className="text-sm font-bold text-emerald-600 font-mono">
-                    ${(formData.Utilidad_estimada_MXN || 0).toLocaleString("es-MX")}
-                  </span>
+                <TextInput label="Chofer" name="Chofer" value={formData.Chofer} onChange={handleChange} />
+                <SelectInput label="Estado de pago" name="Estado_pago" value={formData.Estado_pago} onChange={handleChange} options={["pendiente", "parcial", "pagado"]} />
+                <MoneyInput label="Costo estimado" name="Costo_estimado_MXN" value={formData.Costo_estimado_MXN} onChange={handleNumberChange} />
+                <div className="rounded-2xl bg-slate-50 p-4">
+                  <span className="block text-xs font-medium text-[var(--bravo-muted)]">Utilidad estimada</span>
+                  <span className="mt-1 block text-lg font-semibold tabular-nums">${Number(formData.Utilidad_estimada_MXN || 0).toLocaleString("es-MX")}</span>
                 </div>
               </>
             )}
-
-            {/* Evidence File Uploaders inside collapsible section */}
-            {(type === "gasto" || type === "pago") && (
-              <div className="space-y-1.5">
-                <label className="block text-xs font-semibold text-slate-400 mb-1">
-                  Evidencia / Ticket (Google Drive)
-                </label>
-                {formData.URL_evidencia_Drive ? (
-                  <div className="flex items-center justify-between border border-emerald-100 rounded-xl p-3 bg-emerald-50 text-emerald-700">
-                    <div className="flex items-center gap-2 truncate">
-                      <Link className="w-4 h-4 flex-shrink-0 text-emerald-600" />
-                      <a
-                        href={formData.URL_evidencia_Drive}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="text-xs underline font-medium truncate"
-                      >
-                        Ver evidencia en Google Drive
-                      </a>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setFormData((prev: any) => ({ ...prev, URL_evidencia_Drive: "" }))}
-                      className="text-red-500 hover:text-red-700 p-1 rounded-lg"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                ) : (
-                  <div>
-                    <input
-                      type="file"
-                      id="evidence-file-upload"
-                      className="hidden"
-                      accept="image/*,application/pdf"
-                      disabled={isUploading || !token}
-                      onChange={async (e) => {
-                        const file = e.target.files?.[0];
-                        if (!file) return;
-                        setIsUploading(true);
-                        try {
-                          const url = await uploadFileToDrive(token || "", file, file.name, file.type);
-                          setFormData((prev: any) => ({ ...prev, URL_evidencia_Drive: url }));
-                        } catch (err: any) {
-                          console.error("Upload error:", err);
-                          alert("Error al subir archivo a Google Drive: " + err.message);
-                        } finally {
-                          setIsUploading(false);
-                        }
-                      }}
-                    />
-                    <label
-                      htmlFor="evidence-file-upload"
-                      className={`flex items-center justify-center gap-2 py-3 border border-dashed rounded-xl cursor-pointer text-xs font-semibold transition-all duration-150 ${
-                        !token 
-                          ? "opacity-50 cursor-not-allowed border-slate-300 bg-slate-100 text-slate-400"
-                          : "border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100"
-                      }`}
-                    >
-                      {isUploading ? (
-                        <>
-                          <Loader2 className="w-4 h-4 animate-spin text-blue-500" />
-                          <span>Subiendo a Google Drive...</span>
-                        </>
-                      ) : (
-                        <>
-                          <Upload className="w-4 h-4" />
-                          <span>{token ? "Subir Archivo o Foto a Drive" : "Inicia sesión para subir a Drive"}</span>
-                        </>
-                      )}
-                    </label>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {type === "viaje" && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {/* Evidencia de Carga */}
-                <div className="space-y-1.5">
-                  <label className="block text-xs font-semibold text-slate-400 mb-1">
-                    Evidencia de Carga
-                  </label>
-                  {formData.URL_evidencia_carga ? (
-                    <div className="flex items-center justify-between border border-emerald-100 rounded-xl p-3 bg-emerald-50 text-emerald-700">
-                      <div className="flex items-center gap-2 truncate">
-                        <Link className="w-4 h-4 flex-shrink-0 text-emerald-600" />
-                        <a
-                          href={formData.URL_evidencia_carga}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="text-xs underline font-medium truncate"
-                        >
-                          Evidencia Carga
-                        </a>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => setFormData((prev: any) => ({ ...prev, URL_evidencia_carga: "" }))}
-                        className="text-red-500 hover:text-red-700 p-1 rounded-lg"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  ) : (
-                    <div>
-                      <input
-                        type="file"
-                        id="carga-file-upload"
-                        className="hidden"
-                        accept="image/*,application/pdf"
-                        disabled={isUploading || !token}
-                        onChange={async (e) => {
-                          const file = e.target.files?.[0];
-                          if (!file) return;
-                          setIsUploading(true);
-                          try {
-                            const url = await uploadFileToDrive(token || "", file, file.name, file.type);
-                            setFormData((prev: any) => ({ ...prev, URL_evidencia_carga: url }));
-                          } catch (err: any) {
-                            console.error("Upload error:", err);
-                            alert("Error al subir archivo de carga: " + err.message);
-                          } finally {
-                            setIsUploading(false);
-                          }
-                        }}
-                      />
-                      <label
-                        htmlFor="carga-file-upload"
-                        className={`flex items-center justify-center gap-2 py-3 border border-dashed rounded-xl cursor-pointer text-xs font-semibold transition-all duration-150 ${
-                          !token 
-                            ? "opacity-50 cursor-not-allowed border-slate-300 bg-slate-100 text-slate-400"
-                            : "border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100"
-                        }`}
-                      >
-                        {isUploading ? (
-                          <>
-                            <Loader2 className="w-4 h-4 animate-spin text-blue-500" />
-                            <span>Subiendo...</span>
-                          </>
-                        ) : (
-                          <>
-                            <Upload className="w-4 h-4" />
-                            <span>{token ? "Evidencia Carga" : "Sin Conexión"}</span>
-                          </>
-                        )}
-                      </label>
-                    </div>
-                  )}
-                </div>
-
-                {/* Evidencia de Descarga */}
-                <div className="space-y-1.5">
-                  <label className="block text-xs font-semibold text-slate-400 mb-1">
-                    Evidencia de Descarga
-                  </label>
-                  {formData.URL_evidencia_descarga ? (
-                    <div className="flex items-center justify-between border border-emerald-100 rounded-xl p-3 bg-emerald-50 text-emerald-700">
-                      <div className="flex items-center gap-2 truncate">
-                        <Link className="w-4 h-4 flex-shrink-0 text-emerald-600" />
-                        <a
-                          href={formData.URL_evidencia_descarga}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="text-xs underline font-medium truncate"
-                        >
-                          Evidencia Descarga
-                        </a>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => setFormData((prev: any) => ({ ...prev, URL_evidencia_descarga: "" }))}
-                        className="text-red-500 hover:text-red-700 p-1 rounded-lg"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  ) : (
-                    <div>
-                      <input
-                        type="file"
-                        id="descarga-file-upload"
-                        className="hidden"
-                        accept="image/*,application/pdf"
-                        disabled={isUploadingDescarga || !token}
-                        onChange={async (e) => {
-                          const file = e.target.files?.[0];
-                          if (!file) return;
-                          setIsUploadingDescarga(true);
-                          try {
-                            const url = await uploadFileToDrive(token || "", file, file.name, file.type);
-                            setFormData((prev: any) => ({ ...prev, URL_evidencia_descarga: url }));
-                          } catch (err: any) {
-                            console.error("Upload error:", err);
-                            alert("Error al subir archivo de descarga: " + err.message);
-                          } finally {
-                            setIsUploadingDescarga(false);
-                          }
-                        }}
-                      />
-                      <label
-                        htmlFor="descarga-file-upload"
-                        className={`flex items-center justify-center gap-2 py-3 border border-dashed rounded-xl cursor-pointer text-xs font-semibold transition-all duration-150 ${
-                          !token 
-                            ? "opacity-50 cursor-not-allowed border-slate-300 bg-slate-100 text-slate-400"
-                            : "border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100"
-                        }`}
-                      >
-                        {isUploadingDescarga ? (
-                          <>
-                            <Loader2 className="w-4 h-4 animate-spin text-blue-500" />
-                            <span>Subiendo...</span>
-                          </>
-                        ) : (
-                          <>
-                            <Upload className="w-4 h-4" />
-                            <span>{token ? "Evidencia Descarga" : "Sin Conexión"}</span>
-                          </>
-                        )}
-                      </label>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
           </div>
         )}
+      </section>
 
-        {/* Notes (Shared for all categories, outside collapsible to guarantee visibility) */}
-        <div>
-          <label className="block text-xs font-semibold text-slate-400 mb-1">Notas / Observaciones</label>
-          <textarea
-            name={type === "viaje" ? "Observaciones" : "Notas"}
-            value={(type === "viaje" ? formData.Observaciones : formData.Notas) || ""}
-            onChange={handleChange}
-            placeholder="Añade detalles o aclaraciones aquí..."
-            rows={2}
-            className="w-full text-sm bg-slate-50 border border-slate-100 rounded-xl px-3 py-2.5 focus:bg-white focus:ring-1 focus:ring-blue-500 outline-hidden transition-all resize-none text-[#0A1128]"
-          ></textarea>
-        </div>
-      </div>
-
-      {/* Confirmation and Actions */}
-      <div className="flex gap-4">
-        <button
-          type="button"
-          onClick={onCancel}
-          className="flex-1 flex items-center justify-center gap-2 py-3 bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-700 text-sm font-semibold rounded-xl transition-all"
-        >
-          <Trash2 className="w-4 h-4 text-slate-500" />
+      <div className="grid grid-cols-2 gap-3">
+        <button type="button" onClick={onCancel} className="bravo-secondary-button">
+          <Trash2 className="h-4 w-4" />
           <span>Descartar</span>
         </button>
-        <button
-          type="submit"
-          id="confirm-submit-btn"
-          className="flex-1 flex items-center justify-center gap-2 py-3 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white text-sm font-semibold rounded-xl shadow-md transition-all shadow-blue-500/10"
-        >
-          <CheckCircle2 className="w-4 h-4" />
-          <span>Validar y Guardar</span>
+        <button type="submit" id="confirm-submit-btn" className="bravo-primary-button">
+          <CheckCircle2 className="h-4 w-4" />
+          <span>Guardar</span>
         </button>
       </div>
     </form>
+  );
+}
+
+function FieldShell({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <label className="block">
+      <span className="mb-1.5 block text-xs font-medium text-[var(--bravo-muted)]">{label}</span>
+      {children}
+    </label>
+  );
+}
+
+function TextInput(props: {
+  label: string;
+  name: string;
+  value: any;
+  onChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
+  type?: string;
+  required?: boolean;
+}) {
+  return (
+    <FieldShell label={props.label}>
+      <input className="bravo-field" name={props.name} type={props.type || "text"} value={props.value || ""} onChange={props.onChange} required={props.required} />
+    </FieldShell>
+  );
+}
+
+function MoneyInput(props: {
+  label: string;
+  name: string;
+  value: any;
+  onChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
+  required?: boolean;
+}) {
+  return (
+    <FieldShell label={props.label}>
+      <div className="relative">
+        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-semibold text-slate-400">$</span>
+        <input className="bravo-field pl-8 tabular-nums" name={props.name} type="number" value={props.value || ""} onChange={props.onChange} required={props.required} />
+      </div>
+    </FieldShell>
+  );
+}
+
+function SelectInput(props: {
+  label: string;
+  name: string;
+  value: any;
+  onChange: (event: React.ChangeEvent<HTMLSelectElement>) => void;
+  options: string[];
+  placeholder?: string;
+  required?: boolean;
+}) {
+  return (
+    <FieldShell label={props.label}>
+      <select className="bravo-field" name={props.name} value={props.value || ""} onChange={props.onChange} required={props.required}>
+        <option value="">{props.placeholder || "Selecciona"}</option>
+        {props.options.map((option) => (
+          <option key={option} value={option}>
+            {option}
+          </option>
+        ))}
+      </select>
+    </FieldShell>
+  );
+}
+
+function NoteInput(props: {
+  name: string;
+  value: any;
+  onChange: (event: React.ChangeEvent<HTMLTextAreaElement>) => void;
+}) {
+  return (
+    <FieldShell label="Nota">
+      <textarea className="bravo-field min-h-[88px] resize-none" name={props.name} value={props.value || ""} onChange={props.onChange} placeholder="Agrega una nota breve si hace falta." />
+    </FieldShell>
   );
 }
