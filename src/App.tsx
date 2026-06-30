@@ -253,39 +253,27 @@ export default function App() {
     setNetworkError(null);
 
     let driveLink = "";
-
-    // 1. Upload photo to Google Drive if captured during "foto" mode
-    if (inputType === "foto" && capturedMedia) {
-      try {
-        const res = await fetch(capturedMedia);
-        const blob = await res.blob();
-        const fileName = `${activeRecordType?.toUpperCase() || "EVIDENCIA"}_${Date.now()}.jpg`;
-
-        if (token && navigator.onLine) {
-          driveLink = await uploadFileToDrive(token, blob, fileName, mediaMimeType);
-        } else {
-          driveLink = "[PAGO PENDIENTE DE SUBIDA A DRIVE]";
-        }
-      } catch (err) {
-        console.error("Error uploading evidence image to Google Drive:", err);
-      }
-    }
-
-    // Embed links
-    if (driveLink) {
-      if (activeRecordType === "gasto") finalizedRecord.URL_evidencia_Drive = driveLink;
-      else if (activeRecordType === "pago") finalizedRecord.URL_evidencia_Drive = driveLink;
-      else if (activeRecordType === "viaje") {
-        finalizedRecord.URL_evidencia_carga = driveLink;
-        finalizedRecord.URL_evidencia_descarga = driveLink;
-      }
-    }
-
     const isOnline = navigator.onLine && token;
+    let savedOnline = false;
 
     if (isOnline) {
-      // 2. Online: Try to append directly to Google Sheets
       try {
+        // 1. Upload photo to Google Drive if captured during "foto" mode
+        if (inputType === "foto" && capturedMedia) {
+          const res = await fetch(capturedMedia);
+          const blob = await res.blob();
+          const fileName = `${activeRecordType?.toUpperCase() || "EVIDENCIA"}_${Date.now()}.jpg`;
+          driveLink = await uploadFileToDrive(token, blob, fileName, mediaMimeType);
+          
+          if (activeRecordType === "gasto") finalizedRecord.URL_evidencia_Drive = driveLink;
+          else if (activeRecordType === "pago") finalizedRecord.URL_evidencia_Drive = driveLink;
+          else if (activeRecordType === "viaje") {
+            finalizedRecord.URL_evidencia_carga = driveLink;
+            finalizedRecord.URL_evidencia_descarga = driveLink;
+          }
+        }
+
+        // 2. Try to append directly to Google Sheets
         if (activeRecordType === "gasto") {
           await saveGastoToSheet(token!, finalizedRecord);
         } else if (activeRecordType === "pago") {
@@ -297,23 +285,58 @@ export default function App() {
         // Successfully saved
         finalizedRecord.Estado_validación = "validado";
         setLastSyncedAt(new Date().toISOString());
+        savedOnline = true;
       } catch (err: any) {
-        console.error("Fallo guardado en Sheet:", err);
+        console.error("Fallo guardado online (Sheets/Drive):", err);
         // Sync failure: fall back to offline queuing
         finalizedRecord.Estado_validación = "pendiente_sync";
-        setNetworkError("Guardado local (Fallo de servidor Sheets)");
+        
+        // If we had capturedMedia, set the pending indicator
+        if (inputType === "foto" && capturedMedia) {
+          const pendingPlaceholder = "[PENDIENTE DE SUBIDA A DRIVE]";
+          if (activeRecordType === "gasto") finalizedRecord.URL_evidencia_Drive = pendingPlaceholder;
+          else if (activeRecordType === "pago") finalizedRecord.URL_evidencia_Drive = pendingPlaceholder;
+          else if (activeRecordType === "viaje") {
+            finalizedRecord.URL_evidencia_carga = pendingPlaceholder;
+            finalizedRecord.URL_evidencia_descarga = pendingPlaceholder;
+          }
+        }
+
+        setNetworkError("Guardado local (Fallo de servidor Drive/Sheets)");
         const updatedQueue = [
           ...pendingSyncQueue,
-          { record: finalizedRecord, type: activeRecordType },
+          {
+            record: finalizedRecord,
+            type: activeRecordType,
+            localMediaData: capturedMedia,
+            localMediaMime: mediaMimeType,
+          },
         ];
         saveQueueToLocal(updatedQueue);
       }
     } else {
       // 3. Offline: Save to local pending sync queue
       finalizedRecord.Estado_validación = "pendiente_sync";
+      
+      if (inputType === "foto" && capturedMedia) {
+        const pendingPlaceholder = "[PENDIENTE DE SUBIDA A DRIVE]";
+        if (activeRecordType === "gasto") finalizedRecord.URL_evidencia_Drive = pendingPlaceholder;
+        else if (activeRecordType === "pago") finalizedRecord.URL_evidencia_Drive = pendingPlaceholder;
+        else if (activeRecordType === "viaje") {
+          finalizedRecord.URL_evidencia_carga = pendingPlaceholder;
+          finalizedRecord.URL_evidencia_descarga = pendingPlaceholder;
+        }
+      }
+
+      setNetworkError("Sin conexión a internet (Modo offline)");
       const updatedQueue = [
         ...pendingSyncQueue,
-        { record: finalizedRecord, type: activeRecordType },
+        {
+          record: finalizedRecord,
+          type: activeRecordType,
+          localMediaData: capturedMedia,
+          localMediaMime: mediaMimeType,
+        },
       ];
       saveQueueToLocal(updatedQueue);
     }
@@ -407,12 +430,28 @@ export default function App() {
     for (const item of pendingSyncQueue) {
       try {
         // Upload any queued evidence if applicable
-        if (item.record.URL_evidencia_Drive === "[PAGO PENDIENTE DE SUBIDA A DRIVE]" && capturedMedia) {
-          const res = await fetch(capturedMedia);
+        const isGastoOrPagoPending = 
+          item.record.URL_evidencia_Drive === "[PAGO PENDIENTE DE SUBIDA A DRIVE]" ||
+          item.record.URL_evidencia_Drive === "[PENDIENTE DE SUBIDA A DRIVE]";
+        
+        const isViajeCargaPending = item.record.URL_evidencia_carga === "[PENDIENTE DE SUBIDA A DRIVE]";
+        const isViajeDescargaPending = item.record.URL_evidencia_descarga === "[PENDIENTE DE SUBIDA A DRIVE]";
+
+        if ((isGastoOrPagoPending || isViajeCargaPending || isViajeDescargaPending) && item.localMediaData) {
+          const res = await fetch(item.localMediaData);
           const blob = await res.blob();
           const fileName = `EVIDENCIA_SYNC_${Date.now()}.jpg`;
-          const driveLink = await uploadFileToDrive(token, blob, fileName, mediaMimeType);
-          item.record.URL_evidencia_Drive = driveLink;
+          const driveLink = await uploadFileToDrive(token, blob, fileName, item.localMediaMime || "image/jpeg");
+          
+          if (isGastoOrPagoPending) {
+            item.record.URL_evidencia_Drive = driveLink;
+          }
+          if (isViajeCargaPending) {
+            item.record.URL_evidencia_carga = driveLink;
+          }
+          if (isViajeDescargaPending) {
+            item.record.URL_evidencia_descarga = driveLink;
+          }
         }
 
         // Append to specific Sheet tab
@@ -433,7 +472,11 @@ export default function App() {
         );
 
         if (actIndex > -1) {
-          updatedActivities[actIndex].Estado_validación = "validado";
+          updatedActivities[actIndex] = {
+            ...item.record,
+            _type: item.type,
+            Estado_validación: "validado",
+          };
         }
       } catch (err: any) {
         console.error("Could not sync item:", item, err);
@@ -932,12 +975,25 @@ export default function App() {
                         </div>
 
                         <div className="flex items-center gap-2">
-                          <span className={`text-xs font-bold font-mono ${isDarkMode ? "text-slate-100" : "text-slate-900"}`}>
-                            ${(item.Monto_MXN || item.Precio_cobrado_MXN || 0).toLocaleString("es-MX")}
-                          </span>
+                          <div className="text-right flex flex-col items-end">
+                            <span className={`text-xs font-bold font-mono ${isDarkMode ? "text-slate-100" : "text-slate-900"}`}>
+                              ${(item.Monto_MXN || item.Precio_cobrado_MXN || 0).toLocaleString("es-MX")}
+                            </span>
+                            {item.Estado_validación === "pendiente_sync" ? (
+                              <span className="text-[8px] font-bold text-amber-500 uppercase tracking-wide">
+                                Pendiente
+                              </span>
+                            ) : (
+                              <span className="text-[8px] font-bold text-emerald-500 uppercase tracking-wide">
+                                Sincronizado
+                              </span>
+                            )}
+                          </div>
                           <span
                             className={`w-1.5 h-1.5 rounded-full shrink-0 ${
-                              isGasto
+                              item.Estado_validación === "pendiente_sync"
+                                ? "bg-amber-500 animate-pulse"
+                                : isGasto
                                 ? "bg-emerald-500"
                                 : isPago
                                 ? "bg-blue-500"
@@ -960,6 +1016,7 @@ export default function App() {
               isSyncing={isSyncing}
               networkError={networkError}
               isDarkMode={isDarkMode}
+              pendingQueue={pendingSyncQueue}
             />
           </>
         )}
