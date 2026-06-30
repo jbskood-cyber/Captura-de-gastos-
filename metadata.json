@@ -1,0 +1,6 @@
+{
+  "name": "Transporte Bravo - Captura",
+  "description": "App premium para registrar gastos, pagos y viajes de la empresa de camiones familiar de forma rápida, conectada a Google Sheets y Google Drive.",
+  "requestFramePermissions": ["camera", "microphone"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
