@@ -537,36 +537,33 @@ export default function App() {
     const isIframe = typeof window !== "undefined" && window.self !== window.top;
 
     return (
-      <div id="login-container" className="min-h-screen bg-slate-900 flex flex-col justify-between px-6 py-10 text-white font-sans max-w-md mx-auto relative overflow-hidden">
-        {/* Aesthetic Glowing Circles */}
-        <div className="absolute -top-32 -right-32 w-80 h-80 rounded-full bg-blue-500/10 blur-3xl"></div>
-        <div className="absolute -bottom-32 -left-32 w-80 h-80 rounded-full bg-emerald-500/10 blur-3xl"></div>
-
-        <div className="flex flex-col items-center mt-16 space-y-6 relative z-10">
-          <div className="text-center space-y-3">
-            <span className="text-[10px] font-bold text-blue-400 uppercase tracking-widest bg-blue-500/10 px-3.5 py-1.5 rounded-full border border-blue-500/15 font-display">
-              Transporte Bravo
-            </span>
-            <h1 className="text-4xl font-light tracking-tight mt-3 text-white font-display">
-              Captura <span className="font-semibold">Inteligente</span>
+      <div id="login-container" className="min-h-screen bg-[#F8FAFC] flex flex-col justify-between px-6 py-12 text-slate-900 font-sans max-w-md mx-auto relative">
+        <div className="flex flex-col items-center mt-24 space-y-6">
+          {/* Minimalist Logo Icon */}
+          <div className="w-12 h-12 rounded-2xl bg-blue-600 flex items-center justify-center shadow-xs">
+            <Sparkles className="w-6 h-6 text-white" />
+          </div>
+          <div className="text-center space-y-2">
+            <h1 className="text-2xl font-bold tracking-tight text-slate-900 font-display">
+              Captura Bravo
             </h1>
-            <p className="text-xs text-slate-400 max-w-xs mx-auto leading-relaxed">
-              Registra fletes, cobros y gastos del negocio familiar con dictado de voz y fotos de forma simple e intuitiva.
+            <p className="text-sm text-slate-500 max-w-xs mx-auto leading-relaxed">
+              Registra gastos, pagos y viajes de forma rápida y sencilla.
             </p>
           </div>
         </div>
 
-        <div className="space-y-4 relative z-10 my-6">
+        <div className="space-y-4 mb-8">
           {isIframe && (
-            <div className="bg-blue-950/40 border border-blue-500/20 rounded-2xl p-4 text-center space-y-2.5">
-              <p className="text-xs text-blue-200 leading-relaxed">
-                💡 <strong>¿Usando la vista previa?</strong> El inicio de sesión con Google requiere abrir la aplicación en una pestaña completa fuera de este recuadro.
+            <div className="bg-blue-50 border border-blue-100 rounded-2xl p-4 text-center space-y-2.5">
+              <p className="text-xs text-blue-800 leading-relaxed">
+                💡 <strong>¿Usando la vista previa?</strong> El inicio de sesión con Google requiere abrir la aplicación en una pestaña completa.
               </p>
               <a
                 href={window.location.href}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center justify-center gap-1.5 w-full text-xs font-bold text-white bg-blue-600 hover:bg-blue-500 py-2.5 rounded-xl transition-all duration-150 shadow-md cursor-pointer"
+                className="inline-flex items-center justify-center gap-1.5 w-full text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 py-2.5 rounded-xl transition-all duration-150 cursor-pointer"
               >
                 <span>Abrir en pestaña nueva</span>
                 <ExternalLink className="w-3.5 h-3.5" />
@@ -575,36 +572,28 @@ export default function App() {
           )}
 
           {loginError && (
-            <div className="bg-rose-950/40 border border-rose-500/25 rounded-2xl p-4 text-left space-y-2">
-              <div className="flex gap-2 items-start text-rose-300 font-semibold text-xs">
-                <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-rose-400" />
+            <div className="bg-rose-50 border border-rose-100 rounded-2xl p-4 text-left space-y-2">
+              <div className="flex gap-2 items-start text-rose-800 font-semibold text-xs">
+                <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-rose-600" />
                 <span>Error de inicio de sesión</span>
               </div>
-              <p className="text-[11px] text-rose-200/90 leading-relaxed">
+              <p className="text-[11px] text-rose-700 leading-relaxed">
                 {loginError.includes("popup-closed-by-user")
-                  ? "La ventana de Google se cerró. Esto ocurre si se bloquean las ventanas emergentes en tu navegador o debido al recuadro de previsualización. Abre la aplicación en una pestaña nueva o permite las ventanas emergentes."
+                  ? "La ventana de Google se cerró. Abre la aplicación en una pestaña nueva o permite las ventanas emergentes."
                   : `Detalle: ${loginError}`}
               </p>
-              {!isIframe && (
-                <button
-                  onClick={() => window.location.reload()}
-                  className="text-[10px] font-bold text-rose-300 hover:underline cursor-pointer"
-                >
-                  Recargar aplicación ↻
-                </button>
-              )}
             </div>
           )}
 
-          <div className="bg-slate-800/40 border border-slate-700/30 rounded-2xl p-4 text-center text-xs text-slate-400">
-            🔒 Los datos se guardan de forma segura en las carpetas de Google Drive y Sheets de la empresa familiar.
+          <div className="text-center text-xs text-slate-400">
+            Los datos se sincronizan con Google Sheets de la empresa familiar.
           </div>
 
           <button
             onClick={handleLogin}
             disabled={isLoggingIn}
             id="google-signin-btn"
-            className="w-full flex items-center justify-center gap-3 bg-white hover:bg-slate-50 text-slate-800 font-semibold py-3.5 px-6 rounded-2xl active:scale-98 transition-all duration-150 shadow-xl disabled:opacity-50"
+            className="w-full flex items-center justify-center gap-3 bg-white hover:bg-slate-50 text-slate-800 font-semibold py-3 px-6 rounded-xl border border-slate-200 active:scale-98 transition-all duration-150 shadow-xs disabled:opacity-50"
           >
             {isLoggingIn ? (
               <div className="w-5 h-5 border-2 border-slate-800 border-t-transparent rounded-full animate-spin"></div>
@@ -641,39 +630,39 @@ export default function App() {
     </div>
   );
 
-  const bgApp = isDarkMode ? "bg-slate-950 text-slate-100" : "bg-slate-50 text-slate-900";
-  const bgHeader = isDarkMode ? "bg-slate-950" : "bg-slate-50";
+  const bgApp = isDarkMode ? "bg-slate-950 text-slate-100" : "bg-[#F8FAFC] text-slate-900";
+  const bgHeader = isDarkMode ? "bg-slate-950" : "bg-[#F8FAFC]";
   const textPrimary = isDarkMode ? "text-slate-100" : "text-slate-900";
   const textSecondary = isDarkMode ? "text-slate-400" : "text-slate-500";
-  const bgCard = isDarkMode ? "bg-slate-900 border border-slate-800 shadow-md text-slate-100" : "bg-white border border-slate-100 shadow-xs text-slate-800";
+  const bgCard = isDarkMode ? "bg-slate-900 border border-slate-800/80 text-slate-100" : "bg-white border border-slate-200/60 shadow-[0_1px_3px_rgba(0,0,0,0.01)] text-slate-800";
   const bgInput = isDarkMode ? "bg-slate-800 border-slate-700 text-slate-100 focus:bg-slate-750" : "bg-slate-50 border-slate-100 text-slate-900 focus:bg-white";
-  const bgNav = isDarkMode ? "bg-slate-900 border-slate-800" : "bg-white border-slate-100";
+  const bgNav = isDarkMode ? "bg-slate-900 border-slate-800" : "bg-white border-slate-200/60";
   const hoverBtn = isDarkMode ? "hover:bg-slate-800 hover:text-white" : "hover:bg-slate-50 hover:text-slate-800";
 
   return (
-    <div id="main-app-container" className={`min-h-screen ${bgApp} font-sans max-w-md mx-auto flex flex-col justify-between relative shadow-2xl pb-16`}>
+    <div id="main-app-container" className={`min-h-screen ${bgApp} font-sans max-w-md mx-auto flex flex-col justify-between relative pb-16`}>
       {isProcessing && <LoadingOverlay />}
 
       {/* HEADER BAR */}
-      <header className={`${bgHeader} sticky top-0 z-30 px-5 py-4`}>
+      <header className={`${bgHeader} sticky top-0 z-30 px-5 py-4 border-b ${isDarkMode ? "border-slate-900" : "border-slate-100"}`}>
         <div className="flex items-center justify-between">
           <div className="flex items-center">
-            <span className={`text-base font-medium tracking-tight font-display ${isDarkMode ? "text-white" : "text-slate-900"}`}>
-              Transporte <span className="font-extrabold text-blue-600">Bravo</span>
+            <span className={`text-base font-semibold tracking-tight font-display ${isDarkMode ? "text-white" : "text-slate-900"}`}>
+              Captura <span className="text-blue-600">Bravo</span>
             </span>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
             <button
               onClick={() => setIsDarkMode(!isDarkMode)}
-              className={`p-2 rounded-xl transition-all ${isDarkMode ? 'text-amber-400 hover:bg-slate-800' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'}`}
+              className={`p-1.5 rounded-lg transition-all ${isDarkMode ? 'text-amber-400 hover:bg-slate-800' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'}`}
               title={isDarkMode ? "Modo Claro" : "Modo Oscuro"}
             >
               {isDarkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
             </button>
             <button
               onClick={handleLogout}
-              className={`p-2 rounded-xl transition-all ${isDarkMode ? 'text-slate-400 hover:bg-slate-800 hover:text-white' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'}`}
+              className={`p-1.5 rounded-lg transition-all ${isDarkMode ? 'text-slate-400 hover:bg-slate-800 hover:text-white' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'}`}
               title="Cerrar sesión"
             >
               <LogOut className="w-4 h-4" />
@@ -689,56 +678,56 @@ export default function App() {
           <>
             {/* Title Block */}
             <div className="space-y-1">
-              <h1 className={`text-3xl font-light tracking-tight font-display ${isDarkMode ? "text-white" : "text-slate-900"}`}>
-                Captura <span className="font-semibold">rápida</span>
+              <h1 className={`text-2xl font-bold tracking-tight font-display ${isDarkMode ? "text-white" : "text-slate-900"}`}>
+                Asistente de registro
               </h1>
-              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                Asistente Inteligente Bravo
+              <p className={`text-xs ${textSecondary}`}>
+                Envía notas, audio o fotos para procesar con IA.
               </p>
             </div>
 
             {/* Segmented control for input methods */}
-            <div className={`${isDarkMode ? "bg-slate-950/40 border border-slate-800" : "bg-slate-100/70"} p-1 rounded-[16px] grid grid-cols-3 gap-1`}>
+            <div className={`${isDarkMode ? "bg-slate-950/40 border border-slate-900" : "bg-slate-100/50"} p-1 rounded-xl grid grid-cols-3 gap-0.5`}>
               <button
                 id="input-method-audio"
                 onClick={() => { setInputType("audio"); setCapturedMedia(null); }}
-                className={`py-2 rounded-[12px] text-xs font-semibold transition-all flex items-center justify-center gap-1.5 font-display ${
+                className={`py-1.5 rounded-lg text-xs font-medium transition-all flex items-center justify-center gap-1.5 font-display ${
                   inputType === "audio" 
                     ? isDarkMode 
                       ? "bg-slate-800 text-white shadow-xs" 
-                      : "bg-white text-slate-900 shadow-xs" 
+                      : "bg-white text-slate-950 shadow-xs border border-slate-200/20" 
                     : "text-slate-400 hover:text-slate-600"
                 }`}
               >
-                <Mic className={`w-3.5 h-3.5 ${inputType === "audio" ? "text-blue-500" : "text-slate-400"}`} />
+                <Mic className="w-3.5 h-3.5" />
                 <span>Audio</span>
               </button>
               <button
                 id="input-method-photo"
                 onClick={() => { setInputType("foto"); setCapturedMedia(null); }}
-                className={`py-2 rounded-[12px] text-xs font-semibold transition-all flex items-center justify-center gap-1.5 font-display ${
+                className={`py-1.5 rounded-lg text-xs font-medium transition-all flex items-center justify-center gap-1.5 font-display ${
                   inputType === "foto" 
                     ? isDarkMode 
                       ? "bg-slate-800 text-white shadow-xs" 
-                      : "bg-white text-slate-900 shadow-xs" 
+                      : "bg-white text-slate-950 shadow-xs border border-slate-200/20" 
                     : "text-slate-400 hover:text-slate-600"
                 }`}
               >
-                <Camera className={`w-3.5 h-3.5 ${inputType === "foto" ? "text-blue-500" : "text-slate-400"}`} />
+                <Camera className="w-3.5 h-3.5" />
                 <span>Foto</span>
               </button>
               <button
                 id="input-method-text"
                 onClick={() => { setInputType("texto"); setCapturedMedia(null); }}
-                className={`py-2 rounded-[12px] text-xs font-semibold transition-all flex items-center justify-center gap-1.5 font-display ${
+                className={`py-1.5 rounded-lg text-xs font-medium transition-all flex items-center justify-center gap-1.5 font-display ${
                   inputType === "texto" 
                     ? isDarkMode 
                       ? "bg-slate-800 text-white shadow-xs" 
-                      : "bg-white text-slate-900 shadow-xs" 
+                      : "bg-white text-slate-950 shadow-xs border border-slate-200/20" 
                     : "text-slate-400 hover:text-slate-600"
                 }`}
               >
-                <Type className={`w-3.5 h-3.5 ${inputType === "texto" ? "text-blue-500" : "text-slate-400"}`} />
+                <Type className="w-3.5 h-3.5" />
                 <span>Texto</span>
               </button>
             </div>
@@ -746,10 +735,10 @@ export default function App() {
             {/* Active Input Method Card */}
             <div className="space-y-4">
               {inputType === "texto" && (
-                <div id="text-capture-card" className={`${bgCard} rounded-2xl p-5 space-y-4`}>
+                <div id="text-capture-card" className={`${bgCard} rounded-xl p-4 space-y-3.5`}>
                   <div>
-                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2 font-display">
-                      Escribe qué ocurrió
+                    <label className="block text-[11px] font-medium text-slate-400 mb-1.5">
+                      Detalle de la operación
                     </label>
                     <textarea
                       id="text-capture-input"
@@ -757,10 +746,10 @@ export default function App() {
                       onChange={(e) => setInputText(e.target.value)}
                       placeholder="Ej: Gasté 850 de diésel para el rojo Freightliner..."
                       rows={3}
-                      className={`w-full text-xs rounded-xl px-4 py-3 outline-hidden transition-all resize-none ${
+                      className={`w-full text-xs rounded-lg px-3 py-2 outline-hidden transition-all resize-none ${
                         isDarkMode
                           ? "bg-slate-800/40 border border-slate-700/60 text-slate-100 focus:bg-slate-800 focus:ring-1 focus:ring-blue-500"
-                          : "bg-slate-50 border border-slate-100 text-slate-900 focus:bg-white focus:ring-1 focus:ring-blue-500"
+                          : "bg-slate-50 border border-slate-200/60 text-slate-900 focus:bg-white focus:ring-1 focus:ring-blue-500"
                       }`}
                     ></textarea>
                   </div>
@@ -768,16 +757,16 @@ export default function App() {
                     onClick={handleProcessInput}
                     disabled={isProcessing || !inputText.trim()}
                     id="text-interpret-btn"
-                    className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white py-2.5 rounded-xl font-bold text-xs shadow-sm shadow-blue-500/10 transition-all disabled:opacity-50 font-display"
+                    className="w-full flex items-center justify-center gap-1.5 bg-blue-600 hover:bg-blue-700 active:scale-98 text-white py-2 rounded-lg font-medium text-xs transition-all disabled:opacity-50"
                   >
                     <Sparkles className="w-3.5 h-3.5" />
-                    <span>Interpretar con IA</span>
+                    <span>Procesar nota</span>
                   </button>
                 </div>
               )}
 
               {inputType === "foto" && (
-                <div className="space-y-4">
+                <div className="space-y-3">
                   <PhotoCapture
                     onPhotoCaptured={(base64, mime) => {
                       setCapturedMedia(base64);
@@ -791,17 +780,17 @@ export default function App() {
                       onClick={handleProcessInput}
                       id="photo-interpret-btn"
                       disabled={isProcessing}
-                      className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white py-2.5 rounded-xl font-bold text-xs shadow-sm shadow-blue-500/10 transition-all font-display"
+                      className="w-full flex items-center justify-center gap-1.5 bg-blue-600 hover:bg-blue-700 active:scale-98 text-white py-2 rounded-lg font-medium text-xs transition-all"
                     >
                       <Sparkles className="w-3.5 h-3.5" />
-                      <span>Analizar Recibo con IA</span>
+                      <span>Procesar recibo</span>
                     </button>
                   )}
                 </div>
               )}
 
               {inputType === "audio" && (
-                <div className="space-y-4">
+                <div className="space-y-3">
                   <AudioCapture
                     onAudioCaptured={(base64, mime) => {
                       setCapturedMedia(base64);
@@ -815,10 +804,10 @@ export default function App() {
                       onClick={handleProcessInput}
                       id="audio-interpret-btn"
                       disabled={isProcessing}
-                      className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white py-2.5 rounded-xl font-bold text-xs shadow-sm shadow-blue-500/10 transition-all font-display"
+                      className="w-full flex items-center justify-center gap-1.5 bg-blue-600 hover:bg-blue-700 active:scale-98 text-white py-2 rounded-lg font-medium text-xs transition-all"
                     >
                       <Sparkles className="w-3.5 h-3.5" />
-                      <span>Escuchar e Interpretar con IA</span>
+                      <span>Procesar audio</span>
                     </button>
                   )}
                 </div>
@@ -826,77 +815,62 @@ export default function App() {
             </div>
 
             {/* Quick Manual Entry Grid */}
-            <div className="space-y-2.5">
-              <span className={`text-[10px] font-bold ${isDarkMode ? "text-slate-400" : "text-[#0A1128]"} uppercase tracking-widest font-display block px-1`}>
-                Registro Manual
+            <div className="space-y-2">
+              <span className={`text-[11px] font-medium ${isDarkMode ? "text-slate-400" : "text-slate-500"} block px-1`}>
+                Registro manual rápido
               </span>
-              <div className="grid grid-cols-3 gap-2.5">
+              <div className="grid grid-cols-3 gap-2">
                 <button
                   id="action-gasto"
                   onClick={() => handleQuickAction("gasto")}
-                  className={`flex flex-col items-center justify-center p-4 rounded-2xl border transition-all duration-200 active:scale-95 group cursor-pointer ${
+                  className={`flex items-center justify-center gap-2 py-2 px-3 rounded-xl border text-xs font-medium transition-all active:scale-98 ${
                     isDarkMode 
-                      ? "bg-slate-900 hover:bg-slate-800/80 border-slate-800 text-slate-100" 
-                      : "bg-white hover:bg-slate-50 border-slate-100 hover:border-slate-200/80 shadow-xs text-slate-800"
+                      ? "bg-slate-900 border-slate-800 text-slate-100 hover:bg-slate-800" 
+                      : "bg-white border-slate-200 hover:bg-slate-50 text-slate-800"
                   }`}
                 >
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center mb-2.5 transition-colors ${
-                    isDarkMode ? "bg-rose-950/40 text-rose-400 group-hover:bg-rose-900/50" : "bg-rose-50 text-rose-500 group-hover:bg-rose-100"
-                  }`}>
-                    <Receipt className="w-4 h-4" />
-                  </div>
-                  <span className="text-xs font-bold font-display tracking-tight">Gasto</span>
-                  <span className="text-[9px] text-slate-400 mt-0.5">Egresos</span>
+                  <span className="w-1.5 h-1.5 rounded-full bg-rose-500 shrink-0" />
+                  <span>Gasto</span>
                 </button>
 
                 <button
                   id="action-pago"
                   onClick={() => handleQuickAction("pago")}
-                  className={`flex flex-col items-center justify-center p-4 rounded-2xl border transition-all duration-200 active:scale-95 group cursor-pointer ${
+                  className={`flex items-center justify-center gap-2 py-2 px-3 rounded-xl border text-xs font-medium transition-all active:scale-98 ${
                     isDarkMode 
-                      ? "bg-slate-900 hover:bg-slate-800/80 border-slate-800 text-slate-100" 
-                      : "bg-white hover:bg-slate-50 border-slate-100 hover:border-slate-200/80 shadow-xs text-slate-800"
+                      ? "bg-slate-900 border-slate-800 text-slate-100 hover:bg-slate-800" 
+                      : "bg-white border-slate-200 hover:bg-slate-50 text-slate-800"
                   }`}
                 >
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center mb-2.5 transition-colors ${
-                    isDarkMode ? "bg-emerald-950/40 text-emerald-400 group-hover:bg-emerald-900/50" : "bg-emerald-50 text-emerald-500 group-hover:bg-emerald-100"
-                  }`}>
-                    <CreditCard className="w-4 h-4" />
-                  </div>
-                  <span className="text-xs font-bold font-display tracking-tight">Pago</span>
-                  <span className="text-[9px] text-slate-400 mt-0.5">Ingresos</span>
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
+                  <span>Pago</span>
                 </button>
 
                 <button
                   id="action-viaje"
                   onClick={() => handleQuickAction("viaje")}
-                  className={`flex flex-col items-center justify-center p-4 rounded-2xl border transition-all duration-200 active:scale-95 group cursor-pointer ${
+                  className={`flex items-center justify-center gap-2 py-2 px-3 rounded-xl border text-xs font-medium transition-all active:scale-98 ${
                     isDarkMode 
-                      ? "bg-slate-900 hover:bg-slate-800/80 border-slate-800 text-slate-100" 
-                      : "bg-white hover:bg-slate-50 border-slate-100 hover:border-slate-200/80 shadow-xs text-slate-800"
+                      ? "bg-slate-900 border-slate-800 text-slate-100 hover:bg-slate-800" 
+                      : "bg-white border-slate-200 hover:bg-slate-50 text-slate-800"
                   }`}
                 >
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center mb-2.5 transition-colors ${
-                    isDarkMode ? "bg-amber-950/40 text-amber-400 group-hover:bg-amber-900/50" : "bg-amber-50 text-amber-500 group-hover:bg-amber-100"
-                  }`}>
-                    <Truck className="w-4 h-4" />
-                  </div>
-                  <span className="text-xs font-bold font-display tracking-tight">Viaje</span>
-                  <span className="text-[9px] text-slate-400 mt-0.5">Fletes</span>
+                  <span className="w-1.5 h-1.5 rounded-full bg-blue-500 shrink-0" />
+                  <span>Viaje</span>
                 </button>
               </div>
             </div>
 
             {/* Recent Activity List preview */}
-            <div className="space-y-3">
+            <div className="space-y-3.5">
               <div className="flex justify-between items-center px-1">
-                <span className={`text-xs font-bold ${isDarkMode ? "text-slate-400" : "text-[#0A1128]"} uppercase tracking-widest`}>
+                <span className={`text-[11px] font-medium ${isDarkMode ? "text-slate-400" : "text-slate-500"}`}>
                   Actividad reciente
                 </span>
                 {recentActivities.length > 0 && (
                   <button
                     onClick={() => setActiveTab("historial")}
-                    className="text-xs font-bold text-blue-600 hover:text-blue-800"
+                    className="text-xs font-medium text-blue-600 hover:text-blue-700"
                   >
                     Ver todo
                   </button>
@@ -904,12 +878,12 @@ export default function App() {
               </div>
 
               {recentActivities.length === 0 ? (
-                <div className={`${bgCard} rounded-[24px] p-6 text-center text-xs text-slate-400`}>
+                <div className={`${bgCard} rounded-xl p-5 text-center text-xs text-slate-400`}>
                   Aún no hay registros cargados. Tus capturas aparecerán aquí.
                 </div>
               ) : (
-                <div className={`rounded-[24px] border ${isDarkMode ? "bg-slate-900 border-slate-800 divide-y divide-slate-800" : "bg-white border-slate-100 divide-y divide-slate-100"} overflow-hidden shadow-xs`}>
-                  {recentActivities.slice(0, 3).map((item, index) => {
+                <div className={`rounded-xl border ${isDarkMode ? "bg-slate-900 border-slate-800/80 divide-y divide-slate-800/80" : "bg-white border-slate-200/50 divide-y divide-slate-100"} overflow-hidden`}>
+                  {recentActivities.slice(0, 2).map((item, index) => {
                     const isGasto = item._type === "gasto";
                     const isPago = item._type === "pago";
 
@@ -917,66 +891,56 @@ export default function App() {
                       <div
                         key={index}
                         onClick={() => setSelectedDetailItem(item)}
-                        className={`p-4 flex items-center justify-between hover:bg-slate-50/40 dark:hover:bg-slate-800/20 transition-all cursor-pointer group`}
+                        className={`p-3.5 flex items-center justify-between hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-all cursor-pointer group`}
                       >
                         <div className="flex items-center gap-3">
                           <div
-                            className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                            className={`w-8 h-8 rounded-lg flex items-center justify-center ${
                               isGasto
-                                ? isDarkMode ? "bg-slate-800 text-slate-300" : "bg-slate-100/70 text-slate-800"
+                                ? isDarkMode ? "bg-rose-950/20 text-rose-400" : "bg-rose-50 text-rose-500"
                                 : isPago
-                                ? isDarkMode ? "bg-slate-800 text-slate-300" : "bg-slate-100/70 text-slate-800"
-                                : isDarkMode ? "bg-slate-800 text-slate-300" : "bg-slate-100/70 text-slate-800"
+                                ? isDarkMode ? "bg-emerald-950/20 text-emerald-400" : "bg-emerald-50 text-emerald-500"
+                                : isDarkMode ? "bg-blue-950/20 text-blue-400" : "bg-blue-50 text-blue-500"
                             }`}
                           >
                             {isGasto ? (
-                              <Receipt className="w-4 h-4" />
+                              <Receipt className="w-3.5 h-3.5" />
                             ) : isPago ? (
-                              <CreditCard className="w-4 h-4" />
+                              <CreditCard className="w-3.5 h-3.5" />
                             ) : (
-                              <Truck className="w-4 h-4" />
+                              <Truck className="w-3.5 h-3.5" />
                             )}
                           </div>
                           <div>
-                            <div className={`text-xs font-bold ${isDarkMode ? "text-slate-200" : "text-slate-800"} flex items-center gap-1.5 capitalize`}>
+                            <div className={`text-xs font-medium ${isDarkMode ? "text-slate-200" : "text-slate-800"} flex items-center gap-1.5 capitalize`}>
                               <span>
                                 {isGasto ? "Gasto" : isPago ? "Pago" : "Viaje"}
                               </span>
-                              <span className="text-slate-300 font-normal">•</span>
-                              <span className="text-slate-400 font-normal">
+                              <span className="text-slate-300 dark:text-slate-700">•</span>
+                              <span className="text-slate-500 font-normal">
                                 {isGasto ? item.Categoría : isPago ? item.Cliente : item.Material}
                               </span>
                             </div>
                             <span className="text-[10px] text-slate-400 font-mono block mt-0.5">
-                              {item.Fecha} a las {item.Hora ? item.Hora.slice(0, 5) : ""}
+                              {item.Fecha} • {item.Hora ? item.Hora.slice(0, 5) : ""}
                             </span>
                           </div>
                         </div>
 
                         <div className="flex items-center gap-2">
                           <div className="text-right flex flex-col items-end">
-                            <span className={`text-xs font-bold font-mono ${isDarkMode ? "text-slate-100" : "text-slate-900"}`}>
+                            <span className={`text-xs font-semibold font-mono ${isDarkMode ? "text-slate-100" : "text-slate-950"}`}>
                               ${(item.Monto_MXN || item.Precio_cobrado_MXN || 0).toLocaleString("es-MX")}
                             </span>
-                            {item.Estado_validación === "pendiente_sync" ? (
-                              <span className="text-[8px] font-bold text-amber-500 uppercase tracking-wide">
-                                Pendiente
-                              </span>
-                            ) : (
-                              <span className="text-[8px] font-bold text-emerald-500 uppercase tracking-wide">
-                                Sincronizado
-                              </span>
-                            )}
+                            <span className={`text-[9px] font-medium ${item.Estado_validación === "pendiente_sync" ? "text-amber-500" : "text-emerald-500"}`}>
+                              {item.Estado_validación === "pendiente_sync" ? "Pendiente" : "Sincronizado"}
+                            </span>
                           </div>
                           <span
                             className={`w-1.5 h-1.5 rounded-full shrink-0 ${
                               item.Estado_validación === "pendiente_sync"
-                                ? "bg-amber-500 animate-pulse"
-                                : isGasto
-                                ? "bg-emerald-500"
-                                : isPago
-                                ? "bg-blue-500"
-                                : "bg-amber-500"
+                                ? "bg-amber-500"
+                                : "bg-emerald-500"
                             }`}
                           />
                         </div>
@@ -1035,13 +999,13 @@ export default function App() {
 
         {/* --- TAB: HISTORIAL --- */}
         {activeTab === "historial" && (
-          <div className="space-y-6">
+          <div className="space-y-5">
             <div className="space-y-1">
-              <h1 className={`text-3xl font-extrabold tracking-tight ${isDarkMode ? "text-white" : "text-slate-950"}`}>
+              <h1 className={`text-2xl font-bold tracking-tight font-display ${isDarkMode ? "text-white" : "text-slate-900"}`}>
                 Historial
               </h1>
-              <p className={`text-sm ${textSecondary}`}>
-                Busca y filtra todos los registros del negocio.
+              <p className={`text-xs ${textSecondary}`}>
+                Consulta y filtra todos los registros del negocio.
               </p>
             </div>
 
@@ -1052,22 +1016,22 @@ export default function App() {
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Buscar notas, clientes, choferes o camiones..."
-                className={`w-full text-xs rounded-xl pl-10 pr-4 py-3 focus:ring-1 focus:ring-blue-500 outline-hidden transition-all ${
+                placeholder="Buscar cliente, camión, chofer, nota..."
+                className={`w-full text-xs rounded-lg pl-10 pr-4 py-2.5 focus:ring-1 focus:ring-blue-500 outline-hidden transition-all ${
                   isDarkMode
                     ? "bg-slate-900 border border-slate-800 text-slate-100"
-                    : "bg-white border border-slate-100 text-slate-800 shadow-xs"
+                    : "bg-white border border-slate-200 text-slate-800 shadow-[0_1px_2px_rgba(0,0,0,0.01)]"
                 }`}
               />
             </div>
 
             {/* Filters selectors */}
-            <div className="space-y-2">
-              <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider px-1">
+            <div className="space-y-1.5">
+              <div className="flex items-center gap-1.5 text-[11px] font-medium text-slate-400 px-0.5">
                 <Filter className="w-3.5 h-3.5" />
-                <span>Filtrar por categoría</span>
+                <span>Filtrar por tipo</span>
               </div>
-              <div className="flex flex-wrap gap-1.5">
+              <div className="grid grid-cols-4 gap-1">
                 {[
                   { value: "todos", label: "Todos" },
                   { value: "gasto", label: "Gastos" },
@@ -1077,14 +1041,14 @@ export default function App() {
                   <button
                     key={opt.value}
                     onClick={() => setFilterType(opt.value as any)}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ${
+                    className={`py-1.5 rounded-lg text-xs font-medium border transition-all text-center ${
                       filterType === opt.value
                         ? isDarkMode
-                          ? "bg-white border-white text-slate-950"
-                          : "bg-slate-900 border-slate-900 text-white shadow-xs"
+                          ? "bg-white border-white text-slate-950 font-semibold"
+                          : "bg-slate-900 border-slate-900 text-white font-semibold"
                         : isDarkMode
-                        ? "bg-slate-900 border border-slate-800 text-slate-400 hover:bg-slate-800"
-                        : "bg-white border-slate-100 text-slate-500 hover:bg-slate-50"
+                        ? "bg-slate-900 border-slate-800 text-slate-400 hover:bg-slate-850"
+                        : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
                     }`}
                   >
                     {opt.label}
@@ -1094,21 +1058,23 @@ export default function App() {
             </div>
 
             {/* Filter by status */}
-            <div className="flex gap-2">
+            <div className="grid grid-cols-3 gap-1">
               {[
-                { value: "todos", label: "Cualquier Estado" },
-                { value: "pendiente_sync", label: "Pendientes Sync" },
-                { value: "validado", label: "Guardado en Sheets" },
+                { value: "todos", label: "Todos" },
+                { value: "pendiente_sync", label: "Pendientes" },
+                { value: "validado", label: "Sincronizados" },
               ].map((opt) => (
                 <button
                   key={opt.value}
                   onClick={() => setFilterStatus(opt.value as any)}
-                  className={`flex-1 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider border transition-all text-center ${
+                  className={`py-1.5 rounded-lg text-xs font-medium border transition-all text-center ${
                     filterStatus === opt.value
-                      ? "bg-blue-600 border-blue-600 text-white shadow-xs"
+                      ? isDarkMode
+                        ? "bg-blue-600 border-blue-600 text-white"
+                        : "bg-blue-600 border-blue-600 text-white"
                       : isDarkMode
-                      ? "bg-slate-900 border border-slate-800 text-slate-400 hover:bg-slate-800"
-                      : "bg-white border-slate-100 text-slate-500 hover:bg-slate-50"
+                      ? "bg-slate-900 border-slate-800 text-slate-400 hover:bg-slate-850"
+                      : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
                   }`}
                 >
                   {opt.label}
@@ -1118,15 +1084,15 @@ export default function App() {
 
             {/* History Results list */}
             {filteredActivities.length === 0 ? (
-              <div className={`${bgCard} rounded-3xl p-8 text-center space-y-2`}>
-                <FileText className="w-10 h-10 text-slate-300 mx-auto" />
-                <h4 className="text-xs font-semibold text-slate-500">No se encontraron registros</h4>
+              <div className={`${bgCard} rounded-xl p-6 text-center space-y-1.5`}>
+                <FileText className="w-8 h-8 text-slate-300 mx-auto" />
+                <h4 className="text-xs font-medium text-slate-500">No se encontraron registros</h4>
                 <p className="text-[11px] text-slate-400">
-                  Prueba cambiando los filtros o la consulta de búsqueda.
+                  Prueba cambiando los filtros de búsqueda.
                 </p>
               </div>
             ) : (
-              <div className="space-y-3">
+              <div className="space-y-2">
                 {filteredActivities.map((item, idx) => {
                   const isGasto = item._type === "gasto";
                   const isPago = item._type === "pago";
@@ -1135,58 +1101,52 @@ export default function App() {
                     <div
                       key={idx}
                       onClick={() => setSelectedDetailItem(item)}
-                      className={`${bgCard} p-4 rounded-2xl flex items-center justify-between hover:border-slate-500/20 transition-all cursor-pointer group`}
+                      className={`${bgCard} p-3 rounded-xl flex items-center justify-between hover:border-blue-500/30 transition-all cursor-pointer group`}
                     >
-                      <div className="flex items-center gap-3.5">
+                      <div className="flex items-center gap-3">
                         <div
-                          className={`p-2.5 rounded-xl ${
+                          className={`w-8 h-8 rounded-lg flex items-center justify-center ${
                             isGasto
-                              ? isDarkMode ? "bg-red-950/40 text-red-400 border border-red-500/20" : "bg-red-50 text-red-600"
+                              ? isDarkMode ? "bg-rose-950/20 text-rose-400" : "bg-rose-50 text-rose-500"
                               : isPago
-                              ? isDarkMode ? "bg-emerald-950/40 text-emerald-400 border border-emerald-500/20" : "bg-emerald-50 text-emerald-600"
-                              : isDarkMode ? "bg-blue-950/40 text-blue-400 border border-blue-500/20" : "bg-blue-50 text-blue-600"
+                              ? isDarkMode ? "bg-emerald-950/20 text-emerald-400" : "bg-emerald-50 text-emerald-500"
+                              : isDarkMode ? "bg-blue-950/20 text-blue-400" : "bg-blue-50 text-blue-500"
                           }`}
                         >
                           {isGasto ? (
-                            <Wallet className="w-4.5 h-4.5" />
+                            <Wallet className="w-3.5 h-3.5" />
                           ) : isPago ? (
-                            <Landmark className="w-4.5 h-4.5" />
+                            <Landmark className="w-3.5 h-3.5" />
                           ) : (
-                            <Truck className="w-4.5 h-4.5" />
+                            <Truck className="w-3.5 h-3.5" />
                           )}
                         </div>
                         <div>
-                          <div className={`text-xs font-bold ${isDarkMode ? "text-slate-200" : "text-slate-800"} flex items-center gap-1.5 capitalize`}>
+                          <div className={`text-xs font-medium ${isDarkMode ? "text-slate-200" : "text-slate-800"} flex items-center gap-1.5 capitalize`}>
                             <span>
                               {isGasto ? "Gasto" : isPago ? "Pago" : "Viaje"}
                             </span>
-                            <span className="text-slate-300">•</span>
-                            <span className="text-slate-400 font-normal">
+                            <span className="text-slate-300 dark:text-slate-700">•</span>
+                            <span className="text-slate-500 font-normal">
                               {isGasto ? item.Categoría : isPago ? item.Cliente : item.Material}
                             </span>
                           </div>
                           <span className="text-[10px] text-slate-400 mt-0.5 block font-mono">
-                            {item.Fecha} a las {item.Hora}
+                            {item.Fecha} • {item.Hora ? item.Hora.slice(0, 5) : ""}
                           </span>
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-2">
                         <div className="text-right">
-                          <div className={`text-xs font-bold font-mono ${isDarkMode ? "text-slate-100" : "text-slate-900"}`}>
+                          <div className={`text-xs font-semibold font-mono ${isDarkMode ? "text-slate-100" : "text-slate-950"}`}>
                             ${(item.Monto_MXN || item.Precio_cobrado_MXN || 0).toLocaleString("es-MX")}
                           </div>
-                          <span
-                            className={`text-[9px] font-bold px-1.5 py-0.5 rounded-sm uppercase tracking-wide inline-block mt-0.5 border ${
-                              item.Estado_validación === "pendiente_sync"
-                                ? isDarkMode ? "bg-amber-950/40 text-amber-400 border-amber-500/20" : "bg-amber-100 text-amber-800 border-amber-100"
-                                : isDarkMode ? "bg-emerald-950/40 text-emerald-400 border-emerald-500/20" : "bg-emerald-100 text-emerald-800 border-emerald-100"
-                            }`}
-                          >
+                          <span className={`text-[9px] font-medium ${item.Estado_validación === "pendiente_sync" ? "text-amber-500" : "text-emerald-500"}`}>
                             {item.Estado_validación === "pendiente_sync" ? "Pendiente" : "Sincronizado"}
                           </span>
                         </div>
-                        <ChevronRight className="w-4 h-4 text-slate-300 group-hover:translate-x-0.5 transition-all" />
+                        <ChevronRight className="w-3.5 h-3.5 text-slate-300 group-hover:translate-x-0.5 transition-all" />
                       </div>
                     </div>
                   );

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Gasto, Pago, Viaje, ValidationState, IAConfidence, RecordType } from "../types";
-import { AlertCircle, CheckCircle2, Trash2, ArrowLeft, Landmark, Truck, Wallet, FileText, Upload, Link, Loader2 } from "lucide-react";
+import { AlertCircle, CheckCircle2, Trash2, ArrowLeft, Landmark, Truck, Wallet, FileText, Upload, Link, Loader2, ChevronDown, ChevronUp } from "lucide-react";
 import { uploadFileToDrive } from "../services/googleWorkspace";
 
 interface RecordFormProps {
@@ -29,6 +29,7 @@ export default function RecordForm({
   const [formData, setFormData] = useState<any>({});
   const [isUploading, setIsUploading] = useState(false);
   const [isUploadingDescarga, setIsUploadingDescarga] = useState(false);
+  const [showOptional, setShowOptional] = useState(false);
 
   useEffect(() => {
     // Generate unique IDs and timestamps if missing
@@ -205,35 +206,24 @@ export default function RecordForm({
       </div>
 
       <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-xs space-y-4">
-        {/* Core Date & Time fields */}
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="block text-xs font-semibold text-slate-400 mb-1">Fecha</label>
-            <input
-              type="date"
-              name="Fecha"
-              value={formData.Fecha || ""}
-              onChange={handleChange}
-              className="w-full text-sm bg-slate-50 border border-slate-100 rounded-xl px-3 py-2.5 focus:bg-white focus:ring-1 focus:ring-blue-500 outline-hidden transition-all font-mono"
-              required
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-semibold text-slate-400 mb-1">Hora</label>
-            <input
-              type="time"
-              name="Hora"
-              value={formData.Hora || ""}
-              onChange={handleChange}
-              className="w-full text-sm bg-slate-50 border border-slate-100 rounded-xl px-3 py-2.5 focus:bg-white focus:ring-1 focus:ring-blue-500 outline-hidden transition-all font-mono"
-              required
-            />
-          </div>
-        </div>
-
-        {/* --- GASTOS FIELDS --- */}
+        {/* --- ESSENTIAL FIELDS --- */}
         {type === "gasto" && (
           <>
+            <div>
+              <label className="block text-xs font-semibold text-slate-400 mb-1">Monto (MXN)</label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-slate-400">$</span>
+                <input
+                  type="number"
+                  name="Monto_MXN"
+                  value={formData.Monto_MXN || ""}
+                  onChange={handleNumberChange}
+                  className="w-full text-sm bg-slate-50 border border-slate-100 rounded-xl pl-8 pr-3 py-2.5 focus:bg-white focus:ring-1 focus:ring-blue-500 outline-hidden transition-all font-semibold font-mono"
+                  required
+                />
+              </div>
+            </div>
+
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-semibold text-slate-400 mb-1">Categoría</label>
@@ -252,35 +242,7 @@ export default function RecordForm({
                   <option value="Otros">Otros</option>
                 </select>
               </div>
-              <div>
-                <label className="block text-xs font-semibold text-slate-400 mb-1">Subcategoría</label>
-                <input
-                  type="text"
-                  name="Subcategoría"
-                  placeholder="Ej: Filtro, Llantas, Peaje"
-                  value={formData.Subcategoría || ""}
-                  onChange={handleChange}
-                  className="w-full text-sm bg-slate-50 border border-slate-100 rounded-xl px-3 py-2.5 focus:bg-white focus:ring-1 focus:ring-blue-500 outline-hidden transition-all"
-                />
-              </div>
-            </div>
 
-            <div>
-              <label className="block text-xs font-semibold text-slate-400 mb-1">Monto (MXN)</label>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-slate-400">$</span>
-                <input
-                  type="number"
-                  name="Monto_MXN"
-                  value={formData.Monto_MXN || ""}
-                  onChange={handleNumberChange}
-                  className="w-full text-sm bg-slate-50 border border-slate-100 rounded-xl pl-8 pr-3 py-2.5 focus:bg-white focus:ring-1 focus:ring-blue-500 outline-hidden transition-all font-semibold font-mono"
-                  required
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-semibold text-slate-400 mb-1">Camión</label>
                 <select
@@ -294,85 +256,26 @@ export default function RecordForm({
                     <option key={c} value={c}>{c}</option>
                   ))}
                 </select>
-                {camiones.length === 0 && (
-                  <p className="text-[11px] text-amber-600 mt-1">No hay datos de camiones cargados todavía.</p>
-                )}
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-slate-400 mb-1">Chofer</label>
-                <input
-                  type="text"
-                  name="Chofer"
-                  placeholder="Nombre de chofer"
-                  value={formData.Chofer || ""}
-                  onChange={handleChange}
-                  className="w-full text-sm bg-slate-50 border border-slate-100 rounded-xl px-3 py-2.5 focus:bg-white focus:ring-1 focus:ring-blue-500 outline-hidden transition-all"
-                />
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-semibold text-slate-400 mb-1">Método de Pago</label>
-                <select
-                  name="Método_pago"
-                  value={formData.Método_pago || ""}
-                  onChange={handleChange}
-                  className="w-full text-sm bg-slate-50 border border-slate-100 rounded-xl px-3 py-2.5 focus:bg-white focus:ring-1 focus:ring-blue-500 outline-hidden transition-all"
-                >
-                  <option value="Efectivo">Efectivo</option>
-                  <option value="Transferencia">Transferencia</option>
-                  <option value="Tarjeta">Tarjeta de Crédito/Débito</option>
-                  <option value="Vales">Vales Combustible</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-slate-400 mb-1">Proveedor</label>
-                <input
-                  type="text"
-                  name="Proveedor"
-                  placeholder="Gasolinera Pemex, Oxxo, etc."
-                  value={formData.Proveedor || ""}
-                  onChange={handleChange}
-                  className="w-full text-sm bg-slate-50 border border-slate-100 rounded-xl px-3 py-2.5 focus:bg-white focus:ring-1 focus:ring-blue-500 outline-hidden transition-all"
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-semibold text-slate-400 mb-1">Cliente asociado</label>
-                <select
-                  name="Cliente"
-                  value={formData.Cliente || ""}
-                  onChange={handleChange}
-                  className="w-full text-sm bg-slate-50 border border-slate-100 rounded-xl px-3 py-2.5 focus:bg-white focus:ring-1 focus:ring-blue-500 outline-hidden"
-                >
-                  <option value="">{clientes.length === 0 ? "No hay datos cargados todavía" : "-- Ninguno --"}</option>
-                  {clientes.map((cl) => (
-                    <option key={cl} value={cl}>{cl}</option>
-                  ))}
-                </select>
-                {clientes.length === 0 && (
-                  <p className="text-[11px] text-amber-600 mt-1">No hay datos de clientes cargados todavía.</p>
-                )}
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-slate-400 mb-1">Viaje ID</label>
-                <input
-                  type="text"
-                  name="Viaje_ID"
-                  placeholder="Ej: V-1002"
-                  value={formData.Viaje_ID || ""}
-                  onChange={handleChange}
-                  className="w-full text-sm bg-slate-50 border border-slate-100 rounded-xl px-3 py-2.5 focus:bg-white focus:ring-1 focus:ring-blue-500 outline-hidden transition-all font-mono"
-                />
-              </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-400 mb-1">Método de Pago</label>
+              <select
+                name="Método_pago"
+                value={formData.Método_pago || ""}
+                onChange={handleChange}
+                className="w-full text-sm bg-slate-50 border border-slate-100 rounded-xl px-3 py-2.5 focus:bg-white focus:ring-1 focus:ring-blue-500 outline-hidden transition-all"
+              >
+                <option value="Efectivo">Efectivo</option>
+                <option value="Transferencia">Transferencia</option>
+                <option value="Tarjeta">Tarjeta de Crédito/Débito</option>
+                <option value="Vales">Vales Combustible</option>
+              </select>
             </div>
           </>
         )}
 
-        {/* --- PAGOS FIELDS --- */}
         {type === "pago" && (
           <>
             <div>
@@ -389,86 +292,40 @@ export default function RecordForm({
                   <option key={cl} value={cl}>{cl}</option>
                 ))}
               </select>
-              {clientes.length === 0 && (
-                <p className="text-[11px] text-amber-600 mt-1">No hay datos de clientes cargados todavía.</p>
-              )}
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-semibold text-slate-400 mb-1">Monto Recibido (MXN)</label>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-slate-400">$</span>
-                  <input
-                    type="number"
-                    name="Monto_MXN"
-                    value={formData.Monto_MXN || ""}
-                    onChange={handleNumberChange}
-                    className="w-full text-sm bg-slate-50 border border-slate-100 rounded-xl pl-8 pr-3 py-2.5 focus:bg-white focus:ring-1 focus:ring-blue-500 outline-hidden transition-all font-semibold font-mono"
-                    required
-                  />
-                </div>
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-slate-400 mb-1">Saldo Restante (MXN)</label>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-slate-400">$</span>
-                  <input
-                    type="number"
-                    name="Saldo_restante_MXN"
-                    value={formData.Saldo_restante_MXN || ""}
-                    onChange={handleNumberChange}
-                    className="w-full text-sm bg-slate-50 border border-slate-100 rounded-xl pl-8 pr-3 py-2.5 focus:bg-white focus:ring-1 focus:ring-blue-500 outline-hidden transition-all font-mono"
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-semibold text-slate-400 mb-1">Método de Pago</label>
-                <select
-                  name="Método_pago"
-                  value={formData.Método_pago || ""}
-                  onChange={handleChange}
-                  className="w-full text-sm bg-slate-50 border border-slate-100 rounded-xl px-3 py-2.5 focus:bg-white focus:ring-1 focus:ring-blue-500 outline-hidden transition-all"
-                >
-                  <option value="Transferencia">Transferencia</option>
-                  <option value="Efectivo">Efectivo</option>
-                  <option value="Cheque">Cheque</option>
-                  <option value="Tarjeta">Tarjeta</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-slate-400 mb-1">Estado del Pago</label>
-                <select
-                  name="Estado_pago"
-                  value={formData.Estado_pago || ""}
-                  onChange={handleChange}
-                  className="w-full text-sm bg-slate-50 border border-slate-100 rounded-xl px-3 py-2.5 focus:bg-white focus:ring-1 focus:ring-blue-500 outline-hidden transition-all"
-                >
-                  <option value="liquidado">Liquidado</option>
-                  <option value="parcial">Abono Parcial</option>
-                  <option value="pendiente">Pendiente</option>
-                </select>
+            <div>
+              <label className="block text-xs font-semibold text-slate-400 mb-1">Monto Recibido (MXN)</label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-slate-400">$</span>
+                <input
+                  type="number"
+                  name="Monto_MXN"
+                  value={formData.Monto_MXN || ""}
+                  onChange={handleNumberChange}
+                  className="w-full text-sm bg-slate-50 border border-slate-100 rounded-xl pl-8 pr-3 py-2.5 focus:bg-white focus:ring-1 focus:ring-blue-500 outline-hidden transition-all font-semibold font-mono"
+                  required
+                />
               </div>
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-400 mb-1">Viaje ID Asociado</label>
-              <input
-                type="text"
-                name="Viaje_ID"
-                placeholder="Ej: V-1002"
-                value={formData.Viaje_ID || ""}
+              <label className="block text-xs font-semibold text-slate-400 mb-1">Método de Pago</label>
+              <select
+                name="Método_pago"
+                value={formData.Método_pago || ""}
                 onChange={handleChange}
-                className="w-full text-sm bg-slate-50 border border-slate-100 rounded-xl px-3 py-2.5 focus:bg-white focus:ring-1 focus:ring-blue-500 outline-hidden transition-all font-mono"
-              />
+                className="w-full text-sm bg-slate-50 border border-slate-100 rounded-xl px-3 py-2.5 focus:bg-white focus:ring-1 focus:ring-blue-500 outline-hidden transition-all"
+              >
+                <option value="Transferencia">Transferencia</option>
+                <option value="Efectivo">Efectivo</option>
+                <option value="Cheque">Cheque</option>
+                <option value="Tarjeta">Tarjeta</option>
+              </select>
             </div>
           </>
         )}
 
-        {/* --- VIAJES FIELDS --- */}
         {type === "viaje" && (
           <>
             <div className="grid grid-cols-2 gap-4">
@@ -486,24 +343,21 @@ export default function RecordForm({
                     <option key={cl} value={cl}>{cl}</option>
                   ))}
                 </select>
-                {clientes.length === 0 && (
-                  <p className="text-[11px] text-amber-600 mt-1">No hay datos de clientes cargados todavía.</p>
-                )}
               </div>
+
               <div>
-                <label className="block text-xs font-semibold text-slate-400 mb-1">Material</label>
+                <label className="block text-xs font-semibold text-slate-400 mb-1">Camión</label>
                 <select
-                  name="Material"
-                  value={formData.Material || ""}
+                  name="Camión"
+                  value={formData.Camión || ""}
                   onChange={handleChange}
-                  className="w-full text-sm bg-slate-50 border border-slate-100 rounded-xl px-3 py-2.5 focus:bg-white focus:ring-1 focus:ring-blue-500 outline-hidden transition-all"
+                  className="w-full text-sm bg-slate-50 border border-slate-100 rounded-xl px-3 py-2.5 focus:bg-white focus:ring-1 focus:ring-blue-500 outline-hidden"
+                  required
                 >
-                  <option value="Arena">Arena</option>
-                  <option value="Grava">Grava</option>
-                  <option value="Asfalto">Asfalto</option>
-                  <option value="Piedra">Piedra / Base</option>
-                  <option value="Tierra">Tierra / Tezontle</option>
-                  <option value="Otro">Otro</option>
+                  <option value="">{camiones.length === 0 ? "No hay datos cargados todavía" : "-- Selecciona camión --"}</option>
+                  {camiones.map((c) => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
                 </select>
               </div>
             </div>
@@ -521,6 +375,7 @@ export default function RecordForm({
                   required
                 />
               </div>
+
               <div>
                 <label className="block text-xs font-semibold text-slate-400 mb-1">Destino (Entrega)</label>
                 <input
@@ -537,60 +392,22 @@ export default function RecordForm({
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-400 mb-1">Metros Cúbicos</label>
-                <input
-                  type="number"
-                  name="Metros_cubicos"
-                  value={formData.Metros_cubicos || ""}
-                  onChange={handleNumberChange}
-                  className="w-full text-sm bg-slate-50 border border-slate-100 rounded-xl px-3 py-2.5 focus:bg-white focus:ring-1 focus:ring-blue-500 outline-hidden transition-all font-mono"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-slate-400 mb-1">Kilómetros</label>
-                <input
-                  type="number"
-                  name="Kilómetros"
-                  value={formData.Kilómetros || ""}
-                  onChange={handleNumberChange}
-                  className="w-full text-sm bg-slate-50 border border-slate-100 rounded-xl px-3 py-2.5 focus:bg-white focus:ring-1 focus:ring-blue-500 outline-hidden transition-all font-mono"
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-semibold text-slate-400 mb-1">Camión</label>
+                <label className="block text-xs font-semibold text-slate-400 mb-1">Material</label>
                 <select
-                  name="Camión"
-                  value={formData.Camión || ""}
-                  onChange={handleChange}
-                  className="w-full text-sm bg-slate-50 border border-slate-100 rounded-xl px-3 py-2.5 focus:bg-white focus:ring-1 focus:ring-blue-500 outline-hidden"
-                  required
-                >
-                  <option value="">{camiones.length === 0 ? "No hay datos cargados todavía" : "-- Selecciona camión --"}</option>
-                  {camiones.map((c) => (
-                    <option key={c} value={c}>{c}</option>
-                  ))}
-                </select>
-                {camiones.length === 0 && (
-                  <p className="text-[11px] text-amber-600 mt-1">No hay datos de camiones cargados todavía.</p>
-                )}
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-slate-400 mb-1">Chofer</label>
-                <input
-                  type="text"
-                  name="Chofer"
-                  placeholder="Nombre de chofer"
-                  value={formData.Chofer || ""}
+                  name="Material"
+                  value={formData.Material || ""}
                   onChange={handleChange}
                   className="w-full text-sm bg-slate-50 border border-slate-100 rounded-xl px-3 py-2.5 focus:bg-white focus:ring-1 focus:ring-blue-500 outline-hidden transition-all"
-                />
+                >
+                  <option value="Arena">Arena</option>
+                  <option value="Grava">Grava</option>
+                  <option value="Asfalto">Asfalto</option>
+                  <option value="Piedra">Piedra / Base</option>
+                  <option value="Tierra">Tierra / Tezontle</option>
+                  <option value="Otro">Otro</option>
+                </select>
               </div>
-            </div>
 
-            <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-semibold text-slate-400 mb-1">Precio Cobrado (MXN)</label>
                 <div className="relative">
@@ -605,289 +422,465 @@ export default function RecordForm({
                   />
                 </div>
               </div>
-              <div>
-                <label className="block text-xs font-semibold text-slate-400 mb-1">Costo Estimado (MXN)</label>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-slate-400">$</span>
-                  <input
-                    type="number"
-                    name="Costo_estimado_MXN"
-                    value={formData.Costo_estimado_MXN || ""}
-                    onChange={handleNumberChange}
-                    className="w-full text-sm bg-slate-50 border border-slate-100 rounded-xl pl-8 pr-3 py-2.5 focus:bg-white focus:ring-1 focus:ring-blue-500 outline-hidden transition-all font-mono"
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="bg-slate-50 border border-slate-100 rounded-xl p-3">
-                <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Utilidad Est. (MXN)</span>
-                <span className="text-sm font-bold text-emerald-600 font-mono">
-                  ${(formData.Utilidad_estimada_MXN || 0).toLocaleString("es-MX")}
-                </span>
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-slate-400 mb-1">Estado de Pago</label>
-                <select
-                  name="Estado_pago"
-                  value={formData.Estado_pago || ""}
-                  onChange={handleChange}
-                  className="w-full text-sm bg-slate-50 border border-slate-100 rounded-xl px-3 py-2.5 focus:bg-white focus:ring-1 focus:ring-blue-500 outline-hidden transition-all"
-                >
-                  <option value="pendiente">Pendiente</option>
-                  <option value="parcial">Parcial</option>
-                  <option value="pagado">Pagado</option>
-                </select>
-              </div>
             </div>
           </>
         )}
 
-         {/* --- GOOGLE DRIVE EVIDENCE UPLOADER --- */}
-        {(type === "gasto" || type === "pago") && (
-          <div className="space-y-1.5">
-            <label className={`block text-xs font-semibold ${isDarkMode ? "text-slate-400" : "text-slate-500"} mb-1`}>
-              Evidencia / Ticket (Google Drive)
-            </label>
-            {formData.URL_evidencia_Drive ? (
-              <div className={`flex items-center justify-between border rounded-xl p-3 ${
-                isDarkMode 
-                  ? "bg-emerald-950/20 border-emerald-500/20 text-emerald-400" 
-                  : "bg-emerald-50 border-emerald-100 text-emerald-700"
-              }`}>
-                <div className="flex items-center gap-2 truncate">
-                  <Link className={`w-4 h-4 flex-shrink-0 ${isDarkMode ? "text-emerald-400" : "text-emerald-600"}`} />
-                  <a
-                    href={formData.URL_evidencia_Drive}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-xs underline font-medium truncate"
-                  >
-                    Ver evidencia en Google Drive
-                  </a>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setFormData((prev: any) => ({ ...prev, URL_evidencia_Drive: "" }))}
-                  className="text-red-500 hover:text-red-700 p-1 rounded-lg"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
-              </div>
-            ) : (
+        {/* --- COLLAPSIBLE OPTIONAL SECTION --- */}
+        <div className="pt-2">
+          <button
+            type="button"
+            onClick={() => setShowOptional(!showOptional)}
+            className="w-full flex items-center justify-between py-2.5 px-4 border border-slate-100 rounded-xl bg-slate-50 hover:bg-slate-100/80 text-xs font-semibold text-slate-600 transition-all cursor-pointer"
+          >
+            <span>Detalles opcionales</span>
+            {showOptional ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
+          </button>
+        </div>
+
+        {showOptional && (
+          <div className="space-y-4 pt-2 animate-fadeIn">
+            {/* Date & Time fields */}
+            <div className="grid grid-cols-2 gap-4">
               <div>
+                <label className="block text-xs font-semibold text-slate-400 mb-1">Fecha</label>
                 <input
-                  type="file"
-                  id="evidence-file-upload"
-                  className="hidden"
-                  accept="image/*,application/pdf"
-                  disabled={isUploading || !token}
-                  onChange={async (e) => {
-                    const file = e.target.files?.[0];
-                    if (!file) return;
-                    setIsUploading(true);
-                    try {
-                      const url = await uploadFileToDrive(token || "", file, file.name, file.type);
-                      setFormData((prev: any) => ({ ...prev, URL_evidencia_Drive: url }));
-                    } catch (err: any) {
-                      console.error("Upload error:", err);
-                      alert("Error al subir archivo a Google Drive: " + err.message);
-                    } finally {
-                      setIsUploading(false);
-                    }
-                  }}
+                  type="date"
+                  name="Fecha"
+                  value={formData.Fecha || ""}
+                  onChange={handleChange}
+                  className="w-full text-sm bg-slate-50 border border-slate-100 rounded-xl px-3 py-2.5 focus:bg-white focus:ring-1 focus:ring-blue-500 outline-hidden transition-all font-mono"
                 />
-                <label
-                  htmlFor="evidence-file-upload"
-                  className={`flex items-center justify-center gap-2 py-3 border border-dashed rounded-xl cursor-pointer text-xs font-semibold transition-all duration-150 ${
-                    !token 
-                      ? "opacity-50 cursor-not-allowed border-slate-300 bg-slate-100 text-slate-400"
-                      : isDarkMode
-                        ? "border-slate-700 bg-slate-800/40 text-slate-300 hover:bg-slate-800"
-                        : "border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100"
-                  }`}
-                >
-                  {isUploading ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin text-blue-500" />
-                      <span>Subiendo a Google Drive...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Upload className="w-4 h-4" />
-                      <span>{token ? "Subir Archivo o Foto a Drive" : "Inicia sesión para subir a Drive"}</span>
-                    </>
-                  )}
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-400 mb-1">Hora</label>
+                <input
+                  type="time"
+                  name="Hora"
+                  value={formData.Hora || ""}
+                  onChange={handleChange}
+                  className="w-full text-sm bg-slate-50 border border-slate-100 rounded-xl px-3 py-2.5 focus:bg-white focus:ring-1 focus:ring-blue-500 outline-hidden transition-all font-mono"
+                />
+              </div>
+            </div>
+
+            {type === "gasto" && (
+              <>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-400 mb-1">Subcategoría</label>
+                    <input
+                      type="text"
+                      name="Subcategoría"
+                      placeholder="Ej: Filtro, Llantas"
+                      value={formData.Subcategoría || ""}
+                      onChange={handleChange}
+                      className="w-full text-sm bg-slate-50 border border-slate-100 rounded-xl px-3 py-2.5 focus:bg-white focus:ring-1 focus:ring-blue-500 outline-hidden transition-all"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-400 mb-1">Chofer</label>
+                    <input
+                      type="text"
+                      name="Chofer"
+                      placeholder="Nombre de chofer"
+                      value={formData.Chofer || ""}
+                      onChange={handleChange}
+                      className="w-full text-sm bg-slate-50 border border-slate-100 rounded-xl px-3 py-2.5 focus:bg-white focus:ring-1 focus:ring-blue-500 outline-hidden transition-all"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-400 mb-1">Proveedor</label>
+                    <input
+                      type="text"
+                      name="Proveedor"
+                      placeholder="Gasolinera, etc."
+                      value={formData.Proveedor || ""}
+                      onChange={handleChange}
+                      className="w-full text-sm bg-slate-50 border border-slate-100 rounded-xl px-3 py-2.5 focus:bg-white focus:ring-1 focus:ring-blue-500 outline-hidden transition-all"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-400 mb-1">Viaje ID</label>
+                    <input
+                      type="text"
+                      name="Viaje_ID"
+                      placeholder="Ej: V-1002"
+                      value={formData.Viaje_ID || ""}
+                      onChange={handleChange}
+                      className="w-full text-sm bg-slate-50 border border-slate-100 rounded-xl px-3 py-2.5 focus:bg-white focus:ring-1 focus:ring-blue-500 outline-hidden transition-all font-mono"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-400 mb-1">Cliente asociado</label>
+                  <select
+                    name="Cliente"
+                    value={formData.Cliente || ""}
+                    onChange={handleChange}
+                    className="w-full text-sm bg-slate-50 border border-slate-100 rounded-xl px-3 py-2.5 focus:bg-white focus:ring-1 focus:ring-blue-500 outline-hidden"
+                  >
+                    <option value="">{clientes.length === 0 ? "No hay datos cargados todavía" : "-- Ninguno --"}</option>
+                    {clientes.map((cl) => (
+                      <option key={cl} value={cl}>{cl}</option>
+                    ))}
+                  </select>
+                </div>
+              </>
+            )}
+
+            {type === "pago" && (
+              <>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-400 mb-1">Saldo Restante (MXN)</label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-slate-400">$</span>
+                      <input
+                        type="number"
+                        name="Saldo_restante_MXN"
+                        value={formData.Saldo_restante_MXN || ""}
+                        onChange={handleNumberChange}
+                        className="w-full text-sm bg-slate-50 border border-slate-100 rounded-xl pl-8 pr-3 py-2.5 focus:bg-white focus:ring-1 focus:ring-blue-500 outline-hidden transition-all font-mono"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-400 mb-1">Estado del Pago</label>
+                    <select
+                      name="Estado_pago"
+                      value={formData.Estado_pago || ""}
+                      onChange={handleChange}
+                      className="w-full text-sm bg-slate-50 border border-slate-100 rounded-xl px-3 py-2.5 focus:bg-white focus:ring-1 focus:ring-blue-500 outline-hidden transition-all"
+                    >
+                      <option value="liquidado">Liquidado</option>
+                      <option value="parcial">Abono Parcial</option>
+                      <option value="pendiente">Pendiente</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-400 mb-1">Viaje ID Asociado</label>
+                  <input
+                    type="text"
+                    name="Viaje_ID"
+                    placeholder="Ej: V-1002"
+                    value={formData.Viaje_ID || ""}
+                    onChange={handleChange}
+                    className="w-full text-sm bg-slate-50 border border-slate-100 rounded-xl px-3 py-2.5 focus:bg-white focus:ring-1 focus:ring-blue-500 outline-hidden transition-all font-mono"
+                  />
+                </div>
+              </>
+            )}
+
+            {type === "viaje" && (
+              <>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-400 mb-1">Metros Cúbicos</label>
+                    <input
+                      type="number"
+                      name="Metros_cubicos"
+                      value={formData.Metros_cubicos || ""}
+                      onChange={handleNumberChange}
+                      className="w-full text-sm bg-slate-50 border border-slate-100 rounded-xl px-3 py-2.5 focus:bg-white focus:ring-1 focus:ring-blue-500 outline-hidden transition-all font-mono"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-400 mb-1">Kilómetros</label>
+                    <input
+                      type="number"
+                      name="Kilómetros"
+                      value={formData.Kilómetros || ""}
+                      onChange={handleNumberChange}
+                      className="w-full text-sm bg-slate-50 border border-slate-100 rounded-xl px-3 py-2.5 focus:bg-white focus:ring-1 focus:ring-blue-500 outline-hidden transition-all font-mono"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-400 mb-1">Chofer</label>
+                    <input
+                      type="text"
+                      name="Chofer"
+                      placeholder="Nombre chofer"
+                      value={formData.Chofer || ""}
+                      onChange={handleChange}
+                      className="w-full text-sm bg-slate-50 border border-slate-100 rounded-xl px-3 py-2.5 focus:bg-white focus:ring-1 focus:ring-blue-500 outline-hidden transition-all"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-400 mb-1">Estado de Pago</label>
+                    <select
+                      name="Estado_pago"
+                      value={formData.Estado_pago || ""}
+                      onChange={handleChange}
+                      className="w-full text-sm bg-slate-50 border border-slate-100 rounded-xl px-3 py-2.5 focus:bg-white focus:ring-1 focus:ring-blue-500 outline-hidden transition-all"
+                    >
+                      <option value="pendiente">Pendiente</option>
+                      <option value="parcial">Parcial</option>
+                      <option value="pagado">Pagado</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-400 mb-1">Costo Estimado (MXN)</label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-slate-400">$</span>
+                    <input
+                      type="number"
+                      name="Costo_estimado_MXN"
+                      value={formData.Costo_estimado_MXN || ""}
+                      onChange={handleNumberChange}
+                      className="w-full text-sm bg-slate-50 border border-slate-100 rounded-xl pl-8 pr-3 py-2.5 focus:bg-white focus:ring-1 focus:ring-blue-500 outline-hidden transition-all font-mono"
+                    />
+                  </div>
+                </div>
+
+                <div className="bg-slate-50 border border-slate-100 rounded-xl p-3">
+                  <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Utilidad Est. (MXN)</span>
+                  <span className="text-sm font-bold text-emerald-600 font-mono">
+                    ${(formData.Utilidad_estimada_MXN || 0).toLocaleString("es-MX")}
+                  </span>
+                </div>
+              </>
+            )}
+
+            {/* Evidence File Uploaders inside collapsible section */}
+            {(type === "gasto" || type === "pago") && (
+              <div className="space-y-1.5">
+                <label className="block text-xs font-semibold text-slate-400 mb-1">
+                  Evidencia / Ticket (Google Drive)
                 </label>
+                {formData.URL_evidencia_Drive ? (
+                  <div className="flex items-center justify-between border border-emerald-100 rounded-xl p-3 bg-emerald-50 text-emerald-700">
+                    <div className="flex items-center gap-2 truncate">
+                      <Link className="w-4 h-4 flex-shrink-0 text-emerald-600" />
+                      <a
+                        href={formData.URL_evidencia_Drive}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-xs underline font-medium truncate"
+                      >
+                        Ver evidencia en Google Drive
+                      </a>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setFormData((prev: any) => ({ ...prev, URL_evidencia_Drive: "" }))}
+                      className="text-red-500 hover:text-red-700 p-1 rounded-lg"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <div>
+                    <input
+                      type="file"
+                      id="evidence-file-upload"
+                      className="hidden"
+                      accept="image/*,application/pdf"
+                      disabled={isUploading || !token}
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        setIsUploading(true);
+                        try {
+                          const url = await uploadFileToDrive(token || "", file, file.name, file.type);
+                          setFormData((prev: any) => ({ ...prev, URL_evidencia_Drive: url }));
+                        } catch (err: any) {
+                          console.error("Upload error:", err);
+                          alert("Error al subir archivo a Google Drive: " + err.message);
+                        } finally {
+                          setIsUploading(false);
+                        }
+                      }}
+                    />
+                    <label
+                      htmlFor="evidence-file-upload"
+                      className={`flex items-center justify-center gap-2 py-3 border border-dashed rounded-xl cursor-pointer text-xs font-semibold transition-all duration-150 ${
+                        !token 
+                          ? "opacity-50 cursor-not-allowed border-slate-300 bg-slate-100 text-slate-400"
+                          : "border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100"
+                      }`}
+                    >
+                      {isUploading ? (
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin text-blue-500" />
+                          <span>Subiendo a Google Drive...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Upload className="w-4 h-4" />
+                          <span>{token ? "Subir Archivo o Foto a Drive" : "Inicia sesión para subir a Drive"}</span>
+                        </>
+                      )}
+                    </label>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {type === "viaje" && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {/* Evidencia de Carga */}
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-semibold text-slate-400 mb-1">
+                    Evidencia de Carga
+                  </label>
+                  {formData.URL_evidencia_carga ? (
+                    <div className="flex items-center justify-between border border-emerald-100 rounded-xl p-3 bg-emerald-50 text-emerald-700">
+                      <div className="flex items-center gap-2 truncate">
+                        <Link className="w-4 h-4 flex-shrink-0 text-emerald-600" />
+                        <a
+                          href={formData.URL_evidencia_carga}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-xs underline font-medium truncate"
+                        >
+                          Evidencia Carga
+                        </a>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setFormData((prev: any) => ({ ...prev, URL_evidencia_carga: "" }))}
+                        className="text-red-500 hover:text-red-700 p-1 rounded-lg"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ) : (
+                    <div>
+                      <input
+                        type="file"
+                        id="carga-file-upload"
+                        className="hidden"
+                        accept="image/*,application/pdf"
+                        disabled={isUploading || !token}
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          setIsUploading(true);
+                          try {
+                            const url = await uploadFileToDrive(token || "", file, file.name, file.type);
+                            setFormData((prev: any) => ({ ...prev, URL_evidencia_carga: url }));
+                          } catch (err: any) {
+                            console.error("Upload error:", err);
+                            alert("Error al subir archivo de carga: " + err.message);
+                          } finally {
+                            setIsUploading(false);
+                          }
+                        }}
+                      />
+                      <label
+                        htmlFor="carga-file-upload"
+                        className={`flex items-center justify-center gap-2 py-3 border border-dashed rounded-xl cursor-pointer text-xs font-semibold transition-all duration-150 ${
+                          !token 
+                            ? "opacity-50 cursor-not-allowed border-slate-300 bg-slate-100 text-slate-400"
+                            : "border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100"
+                        }`}
+                      >
+                        {isUploading ? (
+                          <>
+                            <Loader2 className="w-4 h-4 animate-spin text-blue-500" />
+                            <span>Subiendo...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Upload className="w-4 h-4" />
+                            <span>{token ? "Evidencia Carga" : "Sin Conexión"}</span>
+                          </>
+                        )}
+                      </label>
+                    </div>
+                  )}
+                </div>
+
+                {/* Evidencia de Descarga */}
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-semibold text-slate-400 mb-1">
+                    Evidencia de Descarga
+                  </label>
+                  {formData.URL_evidencia_descarga ? (
+                    <div className="flex items-center justify-between border border-emerald-100 rounded-xl p-3 bg-emerald-50 text-emerald-700">
+                      <div className="flex items-center gap-2 truncate">
+                        <Link className="w-4 h-4 flex-shrink-0 text-emerald-600" />
+                        <a
+                          href={formData.URL_evidencia_descarga}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-xs underline font-medium truncate"
+                        >
+                          Evidencia Descarga
+                        </a>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setFormData((prev: any) => ({ ...prev, URL_evidencia_descarga: "" }))}
+                        className="text-red-500 hover:text-red-700 p-1 rounded-lg"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ) : (
+                    <div>
+                      <input
+                        type="file"
+                        id="descarga-file-upload"
+                        className="hidden"
+                        accept="image/*,application/pdf"
+                        disabled={isUploadingDescarga || !token}
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          setIsUploadingDescarga(true);
+                          try {
+                            const url = await uploadFileToDrive(token || "", file, file.name, file.type);
+                            setFormData((prev: any) => ({ ...prev, URL_evidencia_descarga: url }));
+                          } catch (err: any) {
+                            console.error("Upload error:", err);
+                            alert("Error al subir archivo de descarga: " + err.message);
+                          } finally {
+                            setIsUploadingDescarga(false);
+                          }
+                        }}
+                      />
+                      <label
+                        htmlFor="descarga-file-upload"
+                        className={`flex items-center justify-center gap-2 py-3 border border-dashed rounded-xl cursor-pointer text-xs font-semibold transition-all duration-150 ${
+                          !token 
+                            ? "opacity-50 cursor-not-allowed border-slate-300 bg-slate-100 text-slate-400"
+                            : "border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100"
+                        }`}
+                      >
+                        {isUploadingDescarga ? (
+                          <>
+                            <Loader2 className="w-4 h-4 animate-spin text-blue-500" />
+                            <span>Subiendo...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Upload className="w-4 h-4" />
+                            <span>{token ? "Evidencia Descarga" : "Sin Conexión"}</span>
+                          </>
+                        )}
+                      </label>
+                    </div>
+                  )}
+                </div>
               </div>
             )}
           </div>
         )}
 
-        {type === "viaje" && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {/* Evidencia de Carga */}
-            <div className="space-y-1.5">
-              <label className={`block text-xs font-semibold ${isDarkMode ? "text-slate-400" : "text-slate-500"} mb-1`}>
-                Evidencia de Carga (Google Drive)
-              </label>
-              {formData.URL_evidencia_carga ? (
-                <div className={`flex items-center justify-between border rounded-xl p-3 ${
-                  isDarkMode 
-                    ? "bg-emerald-950/20 border-emerald-500/20 text-emerald-400" 
-                    : "bg-emerald-50 border-emerald-100 text-emerald-700"
-                }`}>
-                  <div className="flex items-center gap-2 truncate">
-                    <Link className={`w-4 h-4 flex-shrink-0 ${isDarkMode ? "text-emerald-400" : "text-emerald-600"}`} />
-                    <a
-                      href={formData.URL_evidencia_carga}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="text-xs underline font-medium truncate"
-                    >
-                      Evidencia Carga
-                    </a>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setFormData((prev: any) => ({ ...prev, URL_evidencia_carga: "" }))}
-                    className="text-red-500 hover:text-red-700 p-1 rounded-lg"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-              ) : (
-                <div>
-                  <input
-                    type="file"
-                    id="carga-file-upload"
-                    className="hidden"
-                    accept="image/*,application/pdf"
-                    disabled={isUploading || !token}
-                    onChange={async (e) => {
-                      const file = e.target.files?.[0];
-                      if (!file) return;
-                      setIsUploading(true);
-                      try {
-                        const url = await uploadFileToDrive(token || "", file, file.name, file.type);
-                        setFormData((prev: any) => ({ ...prev, URL_evidencia_carga: url }));
-                      } catch (err: any) {
-                        console.error("Upload error:", err);
-                        alert("Error al subir archivo de carga: " + err.message);
-                      } finally {
-                        setIsUploading(false);
-                      }
-                    }}
-                  />
-                  <label
-                    htmlFor="carga-file-upload"
-                    className={`flex items-center justify-center gap-2 py-3 border border-dashed rounded-xl cursor-pointer text-xs font-semibold transition-all duration-150 ${
-                      !token 
-                        ? "opacity-50 cursor-not-allowed border-slate-300 bg-slate-100 text-slate-400"
-                        : isDarkMode
-                          ? "border-slate-700 bg-slate-800/40 text-slate-300 hover:bg-slate-800"
-                          : "border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100"
-                    }`}
-                  >
-                    {isUploading ? (
-                      <>
-                        <Loader2 className="w-4 h-4 animate-spin text-blue-500" />
-                        <span>Subiendo...</span>
-                      </>
-                    ) : (
-                      <>
-                        <Upload className="w-4 h-4" />
-                        <span>{token ? "Evidencia Carga" : "Sin Conexión"}</span>
-                      </>
-                    )}
-                  </label>
-                </div>
-              )}
-            </div>
-
-            {/* Evidencia de Descarga */}
-            <div className="space-y-1.5">
-              <label className={`block text-xs font-semibold ${isDarkMode ? "text-slate-400" : "text-slate-500"} mb-1`}>
-                Evidencia de Descarga (Google Drive)
-              </label>
-              {formData.URL_evidencia_descarga ? (
-                <div className={`flex items-center justify-between border rounded-xl p-3 ${
-                  isDarkMode 
-                    ? "bg-emerald-950/20 border-emerald-500/20 text-emerald-400" 
-                    : "bg-emerald-50 border-emerald-100 text-emerald-700"
-                }`}>
-                  <div className="flex items-center gap-2 truncate">
-                    <Link className={`w-4 h-4 flex-shrink-0 ${isDarkMode ? "text-emerald-400" : "text-emerald-600"}`} />
-                    <a
-                      href={formData.URL_evidencia_descarga}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="text-xs underline font-medium truncate"
-                    >
-                      Evidencia Descarga
-                    </a>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setFormData((prev: any) => ({ ...prev, URL_evidencia_descarga: "" }))}
-                    className="text-red-500 hover:text-red-700 p-1 rounded-lg"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-              ) : (
-                <div>
-                  <input
-                    type="file"
-                    id="descarga-file-upload"
-                    className="hidden"
-                    accept="image/*,application/pdf"
-                    disabled={isUploadingDescarga || !token}
-                    onChange={async (e) => {
-                      const file = e.target.files?.[0];
-                      if (!file) return;
-                      setIsUploadingDescarga(true);
-                      try {
-                        const url = await uploadFileToDrive(token || "", file, file.name, file.type);
-                        setFormData((prev: any) => ({ ...prev, URL_evidencia_descarga: url }));
-                      } catch (err: any) {
-                        console.error("Upload error:", err);
-                        alert("Error al subir archivo de descarga: " + err.message);
-                      } finally {
-                        setIsUploadingDescarga(false);
-                      }
-                    }}
-                  />
-                  <label
-                    htmlFor="descarga-file-upload"
-                    className={`flex items-center justify-center gap-2 py-3 border border-dashed rounded-xl cursor-pointer text-xs font-semibold transition-all duration-150 ${
-                      !token 
-                        ? "opacity-50 cursor-not-allowed border-slate-300 bg-slate-100 text-slate-400"
-                        : isDarkMode
-                          ? "border-slate-700 bg-slate-800/40 text-slate-300 hover:bg-slate-800"
-                          : "border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100"
-                    }`}
-                  >
-                    {isUploadingDescarga ? (
-                      <>
-                        <Loader2 className="w-4 h-4 animate-spin text-blue-500" />
-                        <span>Subiendo...</span>
-                      </>
-                    ) : (
-                      <>
-                        <Upload className="w-4 h-4" />
-                        <span>{token ? "Evidencia Descarga" : "Sin Conexión"}</span>
-                      </>
-                    )}
-                  </label>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Notes (Shared for all categories) */}
+        {/* Notes (Shared for all categories, outside collapsible to guarantee visibility) */}
         <div>
           <label className="block text-xs font-semibold text-slate-400 mb-1">Notas / Observaciones</label>
           <textarea
@@ -895,8 +888,8 @@ export default function RecordForm({
             value={(type === "viaje" ? formData.Observaciones : formData.Notas) || ""}
             onChange={handleChange}
             placeholder="Añade detalles o aclaraciones aquí..."
-            rows={3}
-            className="w-full text-sm bg-slate-50 border border-slate-100 rounded-xl px-3 py-2.5 focus:bg-white focus:ring-1 focus:ring-blue-500 outline-hidden transition-all resize-none"
+            rows={2}
+            className="w-full text-sm bg-slate-50 border border-slate-100 rounded-xl px-3 py-2.5 focus:bg-white focus:ring-1 focus:ring-blue-500 outline-hidden transition-all resize-none text-[#0A1128]"
           ></textarea>
         </div>
       </div>

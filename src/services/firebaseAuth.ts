@@ -2,6 +2,8 @@ import { initializeApp, getApp, getApps } from "firebase/app";
 import {
   getAuth,
   signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
   GoogleAuthProvider,
   onAuthStateChanged,
   User,
@@ -18,16 +20,39 @@ provider.addScope("https://www.googleapis.com/auth/spreadsheets");
 provider.addScope("https://www.googleapis.com/auth/drive.file");
 
 let isSigningIn = false;
-let cachedAccessToken: string | null = null;
+let cachedAccessToken: string | null = typeof window !== "undefined" ? localStorage.getItem("google_access_token") : null;
 
-// Initialize auth state listener
+// Initialize auth state listener and handle redirect results
 export const initAuth = (
   onAuthSuccess?: (user: User, token: string) => void,
   onAuthFailure?: () => void
 ) => {
+  // First, check redirect result (if the user was redirected back)
+  getRedirectResult(auth)
+    .then((result) => {
+      if (result) {
+        const credential = GoogleAuthProvider.credentialFromResult(result);
+        if (credential?.accessToken) {
+          cachedAccessToken = credential.accessToken;
+          localStorage.setItem("google_access_token", credential.accessToken);
+          if (result.user && onAuthSuccess) {
+            onAuthSuccess(result.user, credential.accessToken);
+          }
+        }
+      }
+    })
+    .catch((error) => {
+      console.error("Error processing Google redirect result:", error);
+    });
+
   return onAuthStateChanged(auth, async (user: User | null) => {
     if (user) {
-      if (cachedAccessToken) {
+      const storedToken = localStorage.getItem("google_access_token");
+      if (storedToken) {
+        cachedAccessToken = storedToken;
+        if (onAuthSuccess) onAuthSuccess(user, storedToken);
+      } else if (cachedAccessToken) {
+        localStorage.setItem("google_access_token", cachedAccessToken);
         if (onAuthSuccess) onAuthSuccess(user, cachedAccessToken);
       } else {
         // If logged in but cache is empty, we must prompt login to refresh the access token
@@ -38,23 +63,31 @@ export const initAuth = (
       }
     } else {
       cachedAccessToken = null;
+      localStorage.removeItem("google_access_token");
       if (onAuthFailure) onAuthFailure();
     }
   });
 };
 
-// Initiate Google Sign-In popup with proper scopes
-export const googleSignIn = async (): Promise<{ user: User; accessToken: string } | null> => {
+// Initiate Google Sign-In with proper scopes (supporting both popup and fallback redirect)
+export const googleSignIn = async (useRedirect = false): Promise<{ user: User; accessToken: string } | null> => {
   try {
     isSigningIn = true;
-    const result = await signInWithPopup(auth, provider);
-    const credential = GoogleAuthProvider.credentialFromResult(result);
-    if (!credential?.accessToken) {
-      throw new Error("No se obtuvo un token de acceso de Google OAuth.");
+    if (useRedirect) {
+      await signInWithRedirect(auth, provider);
+      return null; // Will redirect away, page reload happens
+    } else {
+      const result = await signInWithPopup(auth, provider);
+      const credential = GoogleAuthProvider.credentialFromResult(result);
+      if (!credential?.accessToken) {
+        throw new Error("No se obtuvo un token de acceso de Google OAuth.");
+      }
+      cachedAccessToken = credential.accessToken;
+      localStorage.setItem("google_access_token", credential.accessToken);
+      return { user: result.user, accessToken: cachedAccessToken };
     }
-    cachedAccessToken = credential.accessToken;
-    return { user: result.user, accessToken: cachedAccessToken };
   } catch (error: any) {
+    // If popup was blocked or failed, we can fallback to redirect if not in iframe
     console.error("Error signing in with Google:", error);
     throw error;
   } finally {
@@ -63,10 +96,15 @@ export const googleSignIn = async (): Promise<{ user: User; accessToken: string 
 };
 
 export const getAccessToken = async (): Promise<string | null> => {
+  if (!cachedAccessToken) {
+    cachedAccessToken = localStorage.getItem("google_access_token");
+  }
   return cachedAccessToken;
 };
 
 export const logout = async () => {
   await auth.signOut();
   cachedAccessToken = null;
+  localStorage.removeItem("google_access_token");
 };
+
