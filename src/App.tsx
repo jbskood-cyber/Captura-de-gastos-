@@ -38,6 +38,56 @@ type InputType = "audio" | "foto" | "texto";
 type SaveConfirmation = "synced" | "pending";
 
 const PENDING_DRIVE = "[PENDIENTE DE SUBIDA A DRIVE]";
+const isPreviewMode =
+  (import.meta as any).env?.DEV === true &&
+  typeof window !== "undefined" &&
+  new URLSearchParams(window.location.search).get("preview") === "1";
+const previewUser = { email: "preview@capturabravo.local" };
+
+function previewActivities() {
+  const now = new Date();
+  const fecha = now.toISOString().split("T")[0];
+  const hora = now.toTimeString().split(" ")[0];
+  return [
+    {
+      _type: "gasto",
+      ID_gasto: "PREVIEW-G-001",
+      Fecha: fecha,
+      Hora: hora,
+      Categoría: "Casetas",
+      Monto_MXN: 480,
+      Camión: "Unidad 12",
+      Método_pago: "Efectivo",
+      Estado_validacion: "pendiente_sync",
+      Notas: "Vista previa local",
+    },
+    {
+      _type: "pago",
+      ID_pago: "PREVIEW-P-001",
+      Fecha: fecha,
+      Hora: hora,
+      Cliente: "Cliente Bravo",
+      Monto_MXN: 3500,
+      Método_pago: "Transferencia",
+      Estado_validacion: "pendiente_sync",
+      Notas: "Pago de ejemplo",
+    },
+    {
+      _type: "viaje",
+      ID_viaje: "PREVIEW-V-001",
+      Fecha: fecha,
+      Hora: hora,
+      Cliente: "Obra Norte",
+      Origen: "Patio",
+      Destino: "Fraccionamiento",
+      Material: "Grava",
+      Camión: "Unidad 08",
+      Precio_cobrado_MXN: 7200,
+      Estado_validacion: "pendiente_sync",
+      Observaciones: "Viaje de ejemplo",
+    },
+  ];
+}
 
 const text = (value: unknown) => String(value ?? "");
 const money = (value: unknown) => Number(value || 0).toLocaleString("es-MX");
@@ -127,6 +177,13 @@ export default function App() {
   const [isUploadingEvidence, setIsUploadingEvidence] = useState(false);
 
   useEffect(() => {
+    if (isPreviewMode) {
+      setUser(previewUser);
+      setToken(null);
+      setNeedsAuth(false);
+      return () => undefined;
+    }
+
     const unsubscribe = initAuth(
       (currentUser, currentToken) => {
         setUser(currentUser);
@@ -144,10 +201,26 @@ export default function App() {
     const savedCamiones = localStorage.getItem("bravo_camiones");
     const savedClientes = localStorage.getItem("bravo_clientes");
 
-    if (savedActivities) setRecentActivities(JSON.parse(savedActivities));
+    const localActivities = savedActivities ? JSON.parse(savedActivities) : [];
+    if (localActivities.length > 0) setRecentActivities(localActivities);
+    if (localActivities.length === 0 && isPreviewMode) {
+      const mockActivities = previewActivities();
+      setRecentActivities(mockActivities);
+      localStorage.setItem("bravo_activities", JSON.stringify(mockActivities));
+    }
     if (savedQueue) setPendingSyncQueue(JSON.parse(savedQueue));
     if (savedCamiones) setCamionesList(JSON.parse(savedCamiones));
+    if (!savedCamiones && isPreviewMode) {
+      const mockCamiones = ["Unidad 08", "Unidad 12", "Unidad 21"];
+      setCamionesList(mockCamiones);
+      localStorage.setItem("bravo_camiones", JSON.stringify(mockCamiones));
+    }
     if (savedClientes) setClientesList(JSON.parse(savedClientes));
+    if (!savedClientes && isPreviewMode) {
+      const mockClientes = ["Cliente Bravo", "Obra Norte", "Constructora Local"];
+      setClientesList(mockClientes);
+      localStorage.setItem("bravo_clientes", JSON.stringify(mockClientes));
+    }
     if (token) loadDropdownData();
   }, [token]);
 
@@ -478,6 +551,11 @@ export default function App() {
                 <Truck className="h-3.5 w-3.5" />
               </div>
               <span className="text-[13px] font-semibold">Captura Bravo</span>
+              {isPreviewMode && (
+                <span className="rounded-full border border-[var(--bravo-border)] bg-white/[0.04] px-2 py-1 text-[10px] font-semibold text-[var(--bravo-muted)]">
+                  Vista previa local
+                </span>
+              )}
             </div>
             <button className="bravo-icon-button" onClick={handleLogout} aria-label="Cerrar sesion">
               <LogOut className="h-4 w-4" />
