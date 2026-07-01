@@ -11,6 +11,7 @@ import {
   LogOut,
   Mic,
   Search,
+  Settings,
   Sparkles,
   Truck,
   Type,
@@ -175,6 +176,10 @@ export default function App() {
   const [requireFamilyCode, setRequireFamilyCode] = useState(false);
   const [familyCodeInput, setFamilyCodeInput] = useState("");
   const [operatorName, setOperatorName] = useState(() => localStorage.getItem("bravo_operator_name") || "");
+  const [defaultTruck, setDefaultTruck] = useState(() => localStorage.getItem("bravo_default_truck") || "");
+  const [operatorTemp, setOperatorTemp] = useState("");
+  const [truckTemp, setTruckTemp] = useState("");
+  const [showProfileModal, setShowProfileModal] = useState(false);
 
   const [activeTab, setActiveTab] = useState<TabKey>("inicio");
   const [inputType, setInputType] = useState<InputType>("texto");
@@ -340,12 +345,6 @@ export default function App() {
         localStorage.setItem("bravo_family_code", "");
       }
       
-      if (operatorName.trim()) {
-        localStorage.setItem("bravo_operator_name", operatorName.trim());
-      } else {
-        localStorage.removeItem("bravo_operator_name");
-      }
-      
       setUser({ email: "familia@kargo.local", displayName: "Familia Bravo", name: "Familia Bravo" });
       setToken("family");
       setNeedsAuth(false);
@@ -440,14 +439,36 @@ export default function App() {
       }
 
       const result = await response.json();
-      setActiveRecord(result.datos || {});
+      const extractedData = result.datos || {};
+      
+      // RULE 3: Unidad fija opcional
+      if (authMode === "family") {
+        const savedDefaultTruck = localStorage.getItem("bravo_default_truck");
+        if (savedDefaultTruck) {
+          const detectedTruck = extractedData["Camión"] || extractedData["Camion"] || "";
+          if (!detectedTruck.trim()) {
+            extractedData["Camión"] = savedDefaultTruck;
+          }
+        }
+      }
+
+      setActiveRecord(extractedData);
       setActiveRecordType(result.tipo_registro);
       setActiveTab("captura");
     } catch (err: any) {
       console.error("Gemini Extraction Error:", err);
       alert(`No se pudo interpretar: ${err.message}. Abriremos captura manual.`);
+      
+      const fallbackData: any = {};
+      if (authMode === "family") {
+        const savedDefaultTruck = localStorage.getItem("bravo_default_truck");
+        if (savedDefaultTruck) {
+          fallbackData["Camión"] = savedDefaultTruck;
+        }
+      }
+
       setActiveRecordType(activeRecordType || "gasto");
-      setActiveRecord({});
+      setActiveRecord(fallbackData);
       setActiveTab("captura");
     } finally {
       setIsProcessing(false);
@@ -469,8 +490,9 @@ export default function App() {
     setNetworkError(null);
 
     // Auto-populate Registered_by / Registrado_por for Google/Family modes
-    if (authMode === "family" && operatorName.trim()) {
-      finalizedRecord.Registrado_por = operatorName.trim();
+    const currentOpName = localStorage.getItem("bravo_operator_name") || operatorName;
+    if (authMode === "family" && currentOpName.trim()) {
+      finalizedRecord.Registrado_por = currentOpName.trim();
     } else if (!finalizedRecord.Registrado_por) {
       finalizedRecord.Registrado_por = user?.email || "Familia Bravo";
     }
@@ -712,18 +734,7 @@ export default function App() {
             
             {authMode === "family" ? (
               <div className="space-y-4">
-                <div className="space-y-2">
-                  <label className="text-[11px] font-semibold uppercase tracking-wider text-[var(--bravo-muted)]">¿Quién registra? (Opcional)</label>
-                  <input
-                    type="text"
-                    placeholder="Ej: Papá, Josue..."
-                    value={operatorName}
-                    onChange={(e) => setOperatorName(e.target.value)}
-                    className="flex h-14 w-full rounded-2xl border border-[var(--bravo-border)] bg-[var(--bravo-surface)] px-4 text-[15px] text-[var(--bravo-ink)] placeholder-[var(--bravo-muted)] outline-none focus:border-[var(--bravo-ink)]/25"
-                  />
-                </div>
-                
-                {requireFamilyCode && (
+                {requireFamilyCode ? (
                   <div className="space-y-2">
                     <label className="text-[11px] font-semibold uppercase tracking-wider text-[var(--bravo-muted)]">Código de Acceso Familiar</label>
                     <input
@@ -734,6 +745,10 @@ export default function App() {
                       className="flex h-14 w-full rounded-2xl border border-[var(--bravo-border)] bg-[var(--bravo-surface)] px-4 text-[15px] text-[var(--bravo-ink)] placeholder-[var(--bravo-muted)] outline-none focus:border-[var(--bravo-ink)]/25"
                     />
                   </div>
+                ) : (
+                  <p className="text-center text-[14px] text-[var(--bravo-muted)]">
+                    No se requiere código de acceso para esta red familiar.
+                  </p>
                 )}
 
                 <button
@@ -757,6 +772,89 @@ export default function App() {
                 <span>Continuar con Google</span>
               </button>
             )}
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  const hasOperator = !!operatorName.trim();
+  if (authMode === "family" && !hasOperator) {
+    return (
+      <div className="min-h-screen bg-[var(--bravo-bg)] text-[var(--bravo-ink)]">
+        <main className="mx-auto flex min-h-screen w-full max-w-md flex-col justify-between px-6 py-10">
+          <div className="pt-20 text-center">
+            <div className="mx-auto mb-7 grid h-12 w-12 place-items-center rounded-2xl border border-[var(--bravo-border)] bg-[var(--bravo-surface)]">
+              <Sparkles className="h-5 w-5 text-[var(--bravo-muted)]" />
+            </div>
+            <h1 className="text-[26px] font-semibold">Perfil Familiar</h1>
+            <p className="mx-auto mt-3 max-w-[280px] text-[14px] leading-relaxed text-[var(--bravo-muted)]">
+              Configura tu operador y unidad principal en este dispositivo para comenzar a registrar.
+            </p>
+          </div>
+
+          <div className="space-y-4 my-auto">
+            <div className="space-y-2">
+              <label className="text-[11px] font-semibold uppercase tracking-wider text-[var(--bravo-muted)]">Nombre del operador *</label>
+              <input
+                type="text"
+                placeholder="Ej: Papá, Josué, Chofer 1..."
+                value={operatorTemp}
+                onChange={(e) => setOperatorTemp(e.target.value)}
+                className="flex h-14 w-full rounded-2xl border border-[var(--bravo-border)] bg-[var(--bravo-surface)] px-4 text-[15px] text-[var(--bravo-ink)] placeholder-[var(--bravo-muted)] outline-none focus:border-[var(--bravo-ink)]/25"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-[11px] font-semibold uppercase tracking-wider text-[var(--bravo-muted)]">Unidad Principal (Opcional)</label>
+              <div className="relative">
+                <select
+                  value={truckTemp}
+                  onChange={(e) => setTruckTemp(e.target.value)}
+                  className="flex h-14 w-full rounded-2xl border border-[var(--bravo-border)] bg-[var(--bravo-surface)] px-4 text-[15px] text-[var(--bravo-ink)] outline-none focus:border-[var(--bravo-ink)]/25 appearance-none pr-10"
+                >
+                  <option value="">Ninguna unidad principal</option>
+                  {camionesList.length === 0 ? (
+                    <option disabled>Cargando unidades...</option>
+                  ) : (
+                    camionesList.map((camion) => (
+                      <option key={camion} value={camion}>
+                        {camion}
+                      </option>
+                    ))
+                  )}
+                </select>
+                <div className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-[var(--bravo-muted)]">
+                  <ChevronRight className="h-4 w-4 rotate-90" />
+                </div>
+              </div>
+            </div>
+
+            <button
+              id="save-initial-profile-btn"
+              onClick={() => {
+                if (operatorTemp.trim()) {
+                  localStorage.setItem("bravo_operator_name", operatorTemp.trim());
+                  localStorage.setItem("bravo_default_truck", truckTemp);
+                  setOperatorName(operatorTemp.trim());
+                  setDefaultTruck(truckTemp);
+                }
+              }}
+              disabled={!operatorTemp.trim()}
+              className="flex h-14 w-full items-center justify-center gap-3 rounded-2xl border border-[var(--bravo-border)] bg-[var(--bravo-surface)] text-[15px] font-semibold text-[var(--bravo-ink)] transition active:scale-[0.99] disabled:opacity-60"
+            >
+              <CheckCircle2 className="h-5 w-5 text-[var(--bravo-muted)]" />
+              <span>Guardar y Entrar</span>
+            </button>
+          </div>
+
+          <div className="pt-6">
+            <button
+              onClick={handleLogout}
+              className="text-[11px] font-semibold uppercase tracking-wider text-[var(--bravo-muted)] hover:text-[var(--bravo-ink)] w-full text-center py-2"
+            >
+              Salir de la cuenta familiar
+            </button>
           </div>
         </main>
       </div>
@@ -794,10 +892,38 @@ export default function App() {
                 </span>
               )}
             </div>
-            <button className="bravo-icon-button" onClick={handleLogout} aria-label="Cerrar sesion">
-              <LogOut className="h-4 w-4" />
-            </button>
+            {authMode === "family" ? (
+              <button
+                className="bravo-icon-button"
+                onClick={() => {
+                  setOperatorTemp(operatorName);
+                  setTruckTemp(defaultTruck);
+                  setShowProfileModal(true);
+                }}
+                aria-label="Perfil Familiar"
+              >
+                <Settings className="h-4 w-4" />
+              </button>
+            ) : (
+              <button className="bravo-icon-button" onClick={handleLogout} aria-label="Cerrar sesion">
+                <LogOut className="h-4 w-4" />
+              </button>
+            )}
           </div>
+          {authMode === "family" && operatorName && (
+            <div className="mt-2.5 flex items-center justify-between border-t border-[var(--bravo-border)]/50 pt-2 text-[11px] text-[var(--bravo-muted)] font-medium">
+              <div className="flex items-center gap-1">
+                <span>Operador:</span>
+                <span className="text-[var(--bravo-ink)] font-semibold">{operatorName}</span>
+              </div>
+              {defaultTruck && (
+                <div className="flex items-center gap-1">
+                  <span>Unidad:</span>
+                  <span className="text-[var(--bravo-ink)] font-semibold">{defaultTruck}</span>
+                </div>
+              )}
+            </div>
+          )}
         </header>
 
         <main className="flex-1 space-y-7 px-5 py-6">
@@ -1025,6 +1151,109 @@ export default function App() {
               <button className="bravo-secondary-button w-full" onClick={() => setSelectedDetailItem(null)}>
                 Cerrar
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showProfileModal && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/55 p-4 backdrop-blur-sm">
+          <div className="max-h-[82vh] w-full max-w-md overflow-hidden rounded-t-[28px] border border-[var(--bravo-border)] bg-[var(--bravo-surface)] shadow-2xl sm:rounded-[28px]">
+            <div className="flex items-start justify-between border-b border-[var(--bravo-border)] p-5">
+              <div>
+                <h2 className="text-xl font-semibold">Perfil Familiar</h2>
+                <p className="mt-1 text-xs text-[var(--bravo-muted)]">Configura operador y unidad principal</p>
+              </div>
+              <button
+                className="text-xs font-semibold text-[var(--bravo-muted)] hover:text-[var(--bravo-ink)] py-1 px-3"
+                onClick={() => setShowProfileModal(false)}
+              >
+                Cerrar
+              </button>
+            </div>
+
+            <div className="max-h-[52vh] overflow-y-auto p-5 space-y-5">
+              <div className="space-y-2">
+                <label className="text-[11px] font-semibold uppercase tracking-wider text-[var(--bravo-muted)]">Nombre del operador *</label>
+                <input
+                  type="text"
+                  placeholder="Ej: Papá, Josué..."
+                  value={operatorTemp}
+                  onChange={(e) => setOperatorTemp(e.target.value)}
+                  className="flex h-14 w-full rounded-2xl border border-[var(--bravo-border)] bg-[var(--bravo-bg)] px-4 text-[15px] text-[var(--bravo-ink)] placeholder-[var(--bravo-muted)] outline-none focus:border-[var(--bravo-ink)]/25"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-[11px] font-semibold uppercase tracking-wider text-[var(--bravo-muted)]">Unidad Principal (Opcional)</label>
+                <div className="relative">
+                  <select
+                    value={truckTemp}
+                    onChange={(e) => setTruckTemp(e.target.value)}
+                    className="flex h-14 w-full rounded-2xl border border-[var(--bravo-border)] bg-[var(--bravo-bg)] px-4 text-[15px] text-[var(--bravo-ink)] outline-none focus:border-[var(--bravo-ink)]/25 appearance-none pr-10"
+                  >
+                    <option value="">Ninguna unidad principal</option>
+                    {camionesList.length === 0 ? (
+                      <option disabled>Cargando unidades...</option>
+                    ) : (
+                      camionesList.map((camion) => (
+                        <option key={camion} value={camion}>
+                          {camion}
+                        </option>
+                      ))
+                    )}
+                  </select>
+                  <div className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-[var(--bravo-muted)]">
+                    <ChevronRight className="h-4 w-4 rotate-90" />
+                  </div>
+                </div>
+              </div>
+
+              <div className="pt-4 grid gap-3">
+                <button
+                  id="save-profile-btn"
+                  onClick={() => {
+                    if (operatorTemp.trim()) {
+                      localStorage.setItem("bravo_operator_name", operatorTemp.trim());
+                      localStorage.setItem("bravo_default_truck", truckTemp);
+                      setOperatorName(operatorTemp.trim());
+                      setDefaultTruck(truckTemp);
+                      setShowProfileModal(false);
+                    }
+                  }}
+                  disabled={!operatorTemp.trim()}
+                  className="flex h-14 w-full items-center justify-center gap-3 rounded-2xl border border-[var(--bravo-border)] bg-[var(--bravo-bg)] text-[15px] font-semibold text-[var(--bravo-ink)] hover:bg-[var(--bravo-soft)] transition active:scale-[0.99] disabled:opacity-60"
+                >
+                  Guardar Cambios
+                </button>
+
+                <button
+                  id="change-operator-btn"
+                  onClick={() => {
+                    if (confirm("¿Cambiar de operador? Esto borrará tu nombre y unidad principal de este dispositivo.")) {
+                      localStorage.removeItem("bravo_operator_name");
+                      localStorage.removeItem("bravo_default_truck");
+                      setOperatorName("");
+                      setDefaultTruck("");
+                      setShowProfileModal(false);
+                    }
+                  }}
+                  className="flex h-14 w-full items-center justify-center gap-3 rounded-2xl border border-red-500/20 bg-red-500/5 text-[15px] font-semibold text-red-400 hover:bg-red-500/10 transition active:scale-[0.99]"
+                >
+                  Cambiar operador / Borrar perfil
+                </button>
+
+                <button
+                  id="logout-family-btn"
+                  onClick={() => {
+                    setShowProfileModal(false);
+                    handleLogout();
+                  }}
+                  className="text-xs font-semibold text-[var(--bravo-muted)] hover:text-red-400 py-2 mt-2 text-center"
+                >
+                  Cerrar sesión de la cuenta familiar
+                </button>
+              </div>
             </div>
           </div>
         </div>

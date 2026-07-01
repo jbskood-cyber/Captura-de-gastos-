@@ -97,3 +97,27 @@ Dado que Kargo es una PWA certificada, puedes instalarla en los teléfonos para 
 3. Desplázate hacia abajo por el menú de compartir y selecciona **Añadir a la pantalla de inicio** (Add to Home Screen).
 4. Dale el nombre "Kargo" y confirma.
 5. La aplicación se colocará en tu pantalla de inicio y se abrirá en pantalla completa sin la interfaz del navegador Safari.
+
+---
+
+## 6. Configurar operador y unidad principal por dispositivo
+
+Para que el Modo Familiar sea 100% eficiente y utilizable por 3–5 usuarios de forma simultánea, Kargo cuenta con un sistema de **identidad fija por dispositivo**. 
+
+Esto permite que cada miembro de la familia configure su propio perfil local en su celular de manera independiente.
+
+### 👥 Perfil Familiar Local
+Al primer acceso (o tras ingresar el código de acceso familiar), Kargo solicitará obligatoriamente los datos del operador de ese dispositivo:
+* **Nombre del operador (Requerido):** El nombre de la persona que utiliza este celular (ej: *Papá*, *Josué*, *Chofer 1*). No se permiten valores genéricos o anónimos. Este nombre se asignará automáticamente al campo `Registrado_por` en cada nuevo gasto, pago o flete realizado desde este teléfono.
+* **Unidad principal (Opcional):** El camión que conduce habitualmente el operador de este dispositivo (ej: *Unidad 08*, *Unidad 12*). Si se define, se precargará de manera predeterminada en cada nueva captura, reduciendo la necesidad de seleccionarlo manualmente.
+
+### 🚛 Reglas de Precarga de Unidad
+1. **Detección inteligente:** Si Gemini detecta un camión específico en el texto, audio o foto capturada, **se respetará siempre el camión detectado por la IA**.
+2. **Uso de la unidad fija:** Si Gemini no detecta un camión en la captura y existe una unidad fija configurada en el dispositivo, **se usará automáticamente la unidad fija** para precargar el campo de Camión.
+3. **Flexibilidad total:** El usuario siempre puede cambiar el camión manualmente en la pantalla de revisión antes de guardar. Si el registro no requiere una unidad, se puede dejar vacío libremente sin que sea una limitante para guardar.
+
+### ⚙️ Modificar o Cambiar Perfil
+Si deseas cambiar el operador o la unidad principal asignada al dispositivo en el futuro:
+1. Haz clic en el ícono de **Configuración ⚙️** en la esquina superior derecha del header.
+2. Modifica el nombre del operador o selecciona una unidad diferente y haz clic en **Guardar Cambios**.
+3. Si otro miembro de la familia va a utilizar este mismo celular, puedes presionar el botón **Cambiar operador / Borrar perfil** para reestablecer la configuración inicial.
