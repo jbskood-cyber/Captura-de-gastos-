@@ -22,5 +22,11 @@
     },
     "allowImportingTsExtensions": true,
     "noEmit": true
-  }
+  },
+  "exclude": [
+    "backup_aistudio_current",
+    "backup_aistudio_current_manual",
+    "node_modules",
+    "dist"
+  ]
 }

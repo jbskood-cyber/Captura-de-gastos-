@@ -87,19 +87,7 @@ export const googleSignIn = async (useRedirect = false): Promise<{ user: User; a
       return { user: result.user, accessToken: cachedAccessToken };
     }
   } catch (error: any) {
-    const code = String(error?.code || "");
-    const shouldFallbackToRedirect =
-      !useRedirect &&
-      (code.includes("popup-blocked") ||
-        code.includes("popup-closed-by-user") ||
-        code.includes("cancelled-popup-request") ||
-        code.includes("operation-not-supported-in-this-environment"));
-
-    if (shouldFallbackToRedirect) {
-      await signInWithRedirect(auth, provider);
-      return null;
-    }
-
+    // If popup was blocked or failed, we can fallback to redirect if not in iframe
     console.error("Error signing in with Google:", error);
     throw error;
   } finally {
