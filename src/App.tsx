@@ -37,6 +37,7 @@ type TabKey = "inicio" | "captura" | "historial";
 type InputType = "audio" | "foto" | "texto";
 type SaveConfirmation = "synced" | "pending";
 
+const APP_NAME = "Kargo";
 const PENDING_DRIVE = "[PENDIENTE DE SUBIDA A DRIVE]";
 const isPreviewMode =
   (import.meta as any).env?.DEV === true &&
@@ -278,24 +279,28 @@ export default function App() {
     }
   };
 
-  const handleProcessInput = async () => {
+  const handleProcessInput = async (override?: { inputType?: InputType; media?: string | null; mimeType?: string; text?: string }) => {
     setSaveConfirmation(null);
     setIsProcessing(true);
     setNetworkError(null);
+    const effectiveInputType = override?.inputType || inputType;
+    const effectiveMedia = override?.media ?? capturedMedia;
+    const effectiveMimeType = override?.mimeType || mediaMimeType;
+    const effectiveText = override?.text ?? inputText;
 
     const payload: any = {
-      text: inputText,
+      text: effectiveText,
       type: activeRecordType || "auto",
       camiones: camionesList,
       clientes: clientesList,
     };
 
-    if (inputType === "foto" && capturedMedia) {
-      payload.image = capturedMedia;
-      payload.mimeType = mediaMimeType;
-    } else if (inputType === "audio" && capturedMedia) {
-      payload.audio = capturedMedia;
-      payload.mimeType = mediaMimeType;
+    if (effectiveInputType === "foto" && effectiveMedia) {
+      payload.image = effectiveMedia;
+      payload.mimeType = effectiveMimeType;
+    } else if (effectiveInputType === "audio" && effectiveMedia) {
+      payload.audio = effectiveMedia;
+      payload.mimeType = effectiveMimeType;
     }
 
     try {
@@ -366,7 +371,7 @@ export default function App() {
         console.error("Fallo guardado online (Sheets/Drive):", err);
         setStatus(finalizedRecord, "pendiente_sync");
         attachPendingDrivePlaceholder(finalizedRecord);
-        setNetworkError("Guardado local; se sincronizara despues");
+        setNetworkError("Guardado local; se sincronizar\u00e1 despues");
         confirmation = "pending";
         saveQueueToLocal([
           ...pendingSyncQueue,
@@ -376,7 +381,7 @@ export default function App() {
     } else {
       setStatus(finalizedRecord, "pendiente_sync");
       attachPendingDrivePlaceholder(finalizedRecord);
-      setNetworkError("Sin conexion; guardado en cola local");
+      setNetworkError("Sin conexi\u00f3n; guardado en cola local");
       confirmation = "pending";
       saveQueueToLocal([
         ...pendingSyncQueue,
@@ -469,7 +474,7 @@ export default function App() {
       setNetworkError(null);
       loadDropdownData();
     } else {
-      setNetworkError("Sincronizacion parcial");
+      setNetworkError("Sincronizaci\u00f3n parcial");
     }
   };
 
@@ -503,7 +508,7 @@ export default function App() {
             <div className="mx-auto mb-7 grid h-12 w-12 place-items-center rounded-2xl border border-[var(--bravo-border)] bg-[var(--bravo-surface)]">
               <Truck className="h-5 w-5 text-[var(--bravo-muted)]" />
             </div>
-            <h1 className="text-[28px] font-semibold">Captura Bravo</h1>
+            <h1 className="text-[28px] font-semibold">{APP_NAME}</h1>
             <p className="mx-auto mt-3 max-w-[230px] text-[15px] leading-6 text-[var(--bravo-muted)]">
               Registra gastos, pagos y viajes.
             </p>
@@ -550,7 +555,7 @@ export default function App() {
               <div className="grid h-7 w-7 place-items-center rounded-xl bg-[var(--bravo-soft)] text-[var(--bravo-ink)]">
                 <Truck className="h-3.5 w-3.5" />
               </div>
-              <span className="text-[13px] font-semibold">Captura Bravo</span>
+              <span className="text-[13px] font-semibold">{APP_NAME}</span>
               {isPreviewMode && (
                 <span className="rounded-full border border-[var(--bravo-border)] bg-white/[0.04] px-2 py-1 text-[10px] font-semibold text-[var(--bravo-muted)]">
                   Vista previa local
@@ -591,7 +596,6 @@ export default function App() {
             <>
               <section>
                 <h1 className="text-[34px] font-semibold leading-[1.05]">Captura</h1>
-                <p className="mt-3 text-[15px] text-[var(--bravo-muted)]">Registra lo importante sin llenar formularios.</p>
               </section>
 
               <section className="space-y-4">
@@ -616,6 +620,7 @@ export default function App() {
                       onClick={() => {
                         setInputType("audio");
                         setCapturedMedia(null);
+                        setInputText("");
                       }}
                     >
                       <Mic className="h-5 w-5" />
@@ -628,6 +633,7 @@ export default function App() {
                       onClick={() => {
                         setInputType("foto");
                         setCapturedMedia(null);
+                        setInputText("");
                       }}
                     >
                       <Camera className="h-5 w-5" />
@@ -640,24 +646,29 @@ export default function App() {
                       <Type className="h-4 w-4" />
                       <span>Escribir</span>
                     </button>
-                    <button
-                      id="text-interpret-btn"
-                      className="bravo-primary-button max-w-[152px]"
-                      disabled={isProcessing || (inputType === "texto" && !inputText.trim()) || (inputType !== "texto" && !capturedMedia)}
-                      onClick={handleProcessInput}
-                    >
-                      <Sparkles className="h-4 w-4" />
-                      <span>Revisar</span>
-                    </button>
+                    {inputType === "texto" && (
+                      <button
+                        id="text-interpret-btn"
+                        className="bravo-primary-button max-w-[152px]"
+                        disabled={isProcessing || !inputText.trim()}
+                        onClick={() => handleProcessInput()}
+                      >
+                        <Sparkles className="h-4 w-4" />
+                        <span>Revisar</span>
+                      </button>
+                    )}
                   </div>
                 </div>
 
                 {inputType === "foto" && (
                   <PhotoCapture
+                    description={inputText}
+                    onDescriptionChange={setInputText}
                     onPhotoCaptured={(base64, mime) => {
                       setCapturedMedia(base64);
                       setMediaMimeType(mime);
                     }}
+                    onProcess={(description) => handleProcessInput({ inputType: "foto", text: description })}
                     isProcessing={isProcessing}
                   />
                 )}
@@ -667,6 +678,7 @@ export default function App() {
                     onAudioCaptured={(base64, mime) => {
                       setCapturedMedia(base64);
                       setMediaMimeType(mime);
+                      handleProcessInput({ inputType: "audio", media: base64, mimeType: mime, text: "" });
                     }}
                     isProcessing={isProcessing}
                   />
@@ -692,6 +704,7 @@ export default function App() {
                 isSyncing={isSyncing}
                 networkError={networkError}
                 pendingQueue={pendingSyncQueue}
+                isPreviewMode={isPreviewMode}
               />
             </>
             )

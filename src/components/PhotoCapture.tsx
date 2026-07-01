@@ -1,152 +1,128 @@
-import React, { useState, useRef } from "react";
-import { Camera, Image, X, Sparkles } from "lucide-react";
+import React, { useRef, useState } from "react";
+import { Camera, Image, Loader2, X } from "lucide-react";
 
 interface PhotoCaptureProps {
   onPhotoCaptured: (base64Image: string, mimeType: string) => void;
+  onProcess: (description: string) => void;
+  description: string;
+  onDescriptionChange: (value: string) => void;
   isProcessing: boolean;
-  isDarkMode?: boolean;
 }
 
-export default function PhotoCapture({ onPhotoCaptured, isProcessing, isDarkMode = false }: PhotoCaptureProps) {
+export default function PhotoCapture({
+  onPhotoCaptured,
+  onProcess,
+  description,
+  onDescriptionChange,
+  isProcessing,
+}: PhotoCaptureProps) {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [isDragOver, setIsDragOver] = useState(false);
+  const [hasPhoto, setHasPhoto] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const processFile = (file: File) => {
     if (!file.type.startsWith("image/")) {
-      alert("Por favor selecciona un archivo de imagen válido.");
+      alert("Por favor selecciona un archivo de imagen valido.");
       return;
     }
 
-    const preview = URL.createObjectURL(file);
-    setPreviewUrl(preview);
-
+    setPreviewUrl(URL.createObjectURL(file));
     const reader = new FileReader();
     reader.readAsDataURL(file);
     reader.onloadend = () => {
       if (typeof reader.result === "string") {
+        setHasPhoto(true);
         onPhotoCaptured(reader.result, file.type);
       }
     };
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      processFile(file);
-    }
-  };
-
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragOver(true);
-  };
-
-  const handleDragLeave = () => {
-    setIsDragOver(false);
-  };
-
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragOver(false);
-    const file = e.dataTransfer.files?.[0];
-    if (file) {
-      processFile(file);
-    }
-  };
-
   const clearPhoto = () => {
     setPreviewUrl(null);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
-    }
+    setHasPhoto(false);
+    onDescriptionChange("");
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const openCamera = () => {
+    fileInputRef.current?.setAttribute("capture", "environment");
+    fileInputRef.current?.click();
+  };
+
+  const openGallery = () => {
+    fileInputRef.current?.removeAttribute("capture");
+    fileInputRef.current?.click();
   };
 
   return (
-    <div
-      id="photo-capture-container"
-      onDragOver={handleDragOver}
-      onDragLeave={handleDragLeave}
-      onDrop={handleDrop}
-      className={`rounded-2xl p-6 border transition-all duration-150 flex flex-col items-center justify-center min-h-[220px] ${
-        isDragOver
-          ? "border-blue-500 bg-blue-50/30"
-          : isDarkMode
-          ? "bg-slate-900 border-slate-800"
-          : "bg-white border-slate-100 shadow-xs"
-      }`}
-    >
+    <div id="photo-capture-container" className="rounded-2xl border border-[var(--bravo-border)] bg-white/[0.035] p-5">
       <input
         type="file"
         ref={fileInputRef}
-        onChange={handleFileChange}
+        onChange={(event) => {
+          const file = event.target.files?.[0];
+          if (file) processFile(file);
+        }}
         accept="image/*"
         className="hidden"
         id="camera-file-input"
       />
 
       {previewUrl ? (
-        <div className="relative w-full max-w-[240px] aspect-3/4 rounded-xl overflow-hidden bg-slate-100 group">
-          <img src={previewUrl} alt="Vista previa de evidencia" className="w-full h-full object-cover" />
-          <button
-            onClick={clearPhoto}
-            type="button"
-            className="absolute top-2 right-2 p-1.5 bg-black/60 hover:bg-black/80 text-white rounded-full transition-all"
-          >
-            <X className="w-4 h-4" />
-          </button>
-          {!isProcessing && (
-            <div className="absolute bottom-2 left-1/2 -translate-x-1/2 text-[10px] text-white flex items-center gap-1 bg-blue-600/90 backdrop-blur-xs px-2.5 py-1 rounded-full whitespace-nowrap shadow-sm">
-              <Sparkles className="w-3 h-3 animate-pulse" />
-              <span>Listo para analizar con Gemini</span>
+        <div className="space-y-4">
+          <div className="flex items-start gap-3">
+            <div className="relative h-24 w-20 shrink-0 overflow-hidden rounded-2xl border border-[var(--bravo-border)] bg-black/20">
+              <img src={previewUrl} alt="Vista previa" className="h-full w-full object-cover" />
+              <button
+                onClick={clearPhoto}
+                type="button"
+                className="absolute right-1.5 top-1.5 grid h-7 w-7 place-items-center rounded-full bg-black/65 text-white"
+                aria-label="Quitar foto"
+              >
+                <X className="h-4 w-4" />
+              </button>
             </div>
-          )}
-        </div>
-      ) : (
-        <div className="text-center flex flex-col items-center space-y-4">
-          <div className={`w-16 h-16 rounded-full flex items-center justify-center border text-slate-400 ${
-            isDarkMode ? "bg-slate-800 border-slate-700" : "bg-slate-50 border-slate-100"
-          }`}>
-            <Camera className="w-8 h-8" />
-          </div>
-          <div className="space-y-1">
-            <h4 className={`text-sm font-medium ${isDarkMode ? "text-slate-200" : "text-slate-700"}`}>Toma una foto de tu ticket/evidencia</h4>
-            <p className="text-xs text-slate-400">Suelta tu imagen aquí o elige una opción</p>
+            <div className="min-w-0 flex-1">
+              <span className="text-xs font-semibold uppercase tracking-wide text-[var(--bravo-muted)]">Foto</span>
+              <h3 className="mt-1 text-base font-semibold text-[var(--bravo-ink)]">Lista para procesar</h3>
+              <p className="mt-1 text-sm text-[var(--bravo-muted)]">Agrega contexto si ayuda a Gemini.</p>
+            </div>
           </div>
 
-          <div className="flex items-center space-x-3 w-full">
-            <button
-              type="button"
-              id="camera-capture-trigger"
-              disabled={isProcessing}
-              onClick={() => {
-                if (fileInputRef.current) {
-                  // capture="environment" tells mobile phones to trigger camera directly
-                  fileInputRef.current.setAttribute("capture", "environment");
-                  fileInputRef.current.click();
-                }
-              }}
-              className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white text-xs font-semibold rounded-xl transition-all disabled:opacity-50 shadow-sm"
-            >
-              <Camera className="w-4 h-4" />
-              <span>Abrir cámara</span>
+          <input
+            className="bravo-field"
+            value={description}
+            onChange={(event) => onDescriptionChange(event.target.value)}
+            placeholder="Agregar descripcion (opcional)"
+          />
+
+          <div className="grid gap-3">
+            <button type="button" className="bravo-primary-button" disabled={!hasPhoto || isProcessing} onClick={() => onProcess(description)}>
+              {isProcessing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Camera className="h-4 w-4" />}
+              <span>Procesar foto</span>
             </button>
-            <button
-              type="button"
-              id="gallery-trigger"
-              disabled={isProcessing}
-              onClick={() => {
-                if (fileInputRef.current) {
-                  fileInputRef.current.removeAttribute("capture");
-                  fileInputRef.current.click();
-                }
-              }}
-              className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 active:scale-95 text-xs font-semibold rounded-xl transition-all ${
-                isDarkMode ? "bg-slate-800 hover:bg-slate-700 text-slate-300" : "bg-slate-100 hover:bg-slate-200 text-slate-700"
-              }`}
-            >
-              <Image className={`w-4 h-4 ${isDarkMode ? "text-slate-400" : "text-slate-500"}`} />
-              <span>Galería</span>
+            <button type="button" className="bravo-secondary-button" disabled={!hasPhoto || isProcessing} onClick={() => onProcess("")}>
+              Omitir y procesar
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-5 text-center">
+          <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl border border-[var(--bravo-border)] bg-white/[0.04] text-[var(--bravo-muted)]">
+            <Camera className="h-7 w-7" />
+          </div>
+          <div>
+            <h3 className="text-base font-semibold text-[var(--bravo-ink)]">Capturar foto</h3>
+            <p className="mt-1 text-sm text-[var(--bravo-muted)]">Toma una foto o elige una imagen.</p>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <button type="button" id="camera-capture-trigger" className="bravo-primary-button" disabled={isProcessing} onClick={openCamera}>
+              <Camera className="h-4 w-4" />
+              <span>Camara</span>
+            </button>
+            <button type="button" id="gallery-trigger" className="bravo-secondary-button" disabled={isProcessing} onClick={openGallery}>
+              <Image className="h-4 w-4" />
+              <span>Galeria</span>
             </button>
           </div>
         </div>
