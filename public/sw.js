@@ -1,9 +1,12 @@
-const CACHE_NAME = 'bravo-captura-v1';
+const CACHE_NAME = 'kargo-pwa-v1';
 const ASSETS = [
   '/',
   '/index.html',
   '/manifest.json',
-  '/icon.svg'
+  '/icon.svg',
+  '/icon-192.png',
+  '/icon-512.png',
+  '/apple-touch-icon.png'
 ];
 
 self.addEventListener('install', (event) => {

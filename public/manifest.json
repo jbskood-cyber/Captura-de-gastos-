@@ -1,11 +1,11 @@
 {
-  "name": "Transporte Bravo - Captura",
-  "short_name": "Captura Bravo",
-  "description": "Registra en segundos los gastos, pagos y viajes de la empresa familiar.",
+  "name": "Kargo",
+  "short_name": "Kargo",
+  "description": "Captura rapida de gastos, pagos y viajes.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#0f172a",
+  "background_color": "#090b0f",
+  "theme_color": "#090b0f",
   "orientation": "portrait",
   "icons": [
     {
@@ -15,9 +15,15 @@
       "purpose": "any maskable"
     },
     {
-      "src": "/icon.svg",
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
       "sizes": "512x512",
-      "type": "image/svg+xml",
+      "type": "image/png",
       "purpose": "any maskable"
     }
   ]
