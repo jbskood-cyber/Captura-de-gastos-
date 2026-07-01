@@ -525,7 +525,7 @@ export default function App() {
                       setInputText(event.target.value);
                       setInputType("texto");
                     }}
-                    placeholder="CuÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â©ntame o captura lo que pasÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â³..."
+                    placeholder={"Cu\u00e9ntame o captura lo que pas\u00f3..."}
                     rows={4}
                     className="bravo-chat-input"
                   />
@@ -553,7 +553,7 @@ export default function App() {
                       }}
                     >
                       <Camera className="h-5 w-5" />
-                      <span>CÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¡mara</span>
+                      <span>{"C\u00e1mara"}</span>
                     </button>
                   </div>
 
@@ -604,7 +604,7 @@ export default function App() {
                     </button>
                   )}
                 </div>
-                <ActivityList items={recentActivities.slice(0, 4)} onSelect={setSelectedDetailItem} empty="Los registros recientes aparecerÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¡n aquÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â­." />
+                <ActivityList items={recentActivities.slice(0, 4)} onSelect={setSelectedDetailItem} empty={"Los registros recientes aparecer\u00e1n aqu\u00ed."} />
               </section>
 
               <SyncNotification
@@ -679,7 +679,7 @@ export default function App() {
                   <span>{recordLabel(selectedDetailItem._type)}</span>
                 </div>
                 <h2 className="mt-2 text-xl font-semibold">{activityTitle(selectedDetailItem)}</h2>
-                <p className="mt-1 text-sm text-[var(--bravo-muted)]">{selectedDetailItem.Fecha} ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â· {text(selectedDetailItem.Hora).slice(0, 5)}</p>
+                <p className="mt-1 text-sm text-[var(--bravo-muted)]">{selectedDetailItem.Fecha} - {text(selectedDetailItem.Hora).slice(0, 5)}</p>
               </div>
               <span className={`bravo-status ${getStatus(selectedDetailItem) === "pendiente_sync" ? "pending" : "synced"}`}>
                 {getStatus(selectedDetailItem) === "pendiente_sync" ? "Pendiente" : "Sincronizado"}
@@ -727,7 +727,7 @@ function ActivityList({ items, onSelect, empty }: { items: any[]; onSelect: (ite
                 <span className="truncate text-sm font-semibold">{activityTitle(item)}</span>
                 <span className={`bravo-status-dot ${status === "pendiente_sync" ? "pending" : "synced"}`} />
               </span>
-              <span className="mt-1 block truncate text-xs text-[var(--bravo-muted)]">{recordLabel(item._type)} ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â· {activityMeta(item)}</span>
+              <span className="mt-1 block truncate text-xs text-[var(--bravo-muted)]">{recordLabel(item._type)} - {activityMeta(item)}</span>
             </span>
             <span className="text-right">
               <span className="block text-sm font-semibold tabular-nums">${money(activityAmount(item))}</span>
