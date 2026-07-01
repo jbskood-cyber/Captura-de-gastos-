@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import {
   AlertCircle,
   Camera,
+  Check,
   CheckCircle2,
   ChevronRight,
   Clock3,
@@ -10,12 +11,14 @@ import {
   Loader2,
   LogOut,
   Mic,
+  RefreshCw,
   Search,
   Settings,
   Sparkles,
   Truck,
   Type,
   Wallet,
+  X,
 } from "lucide-react";
 import AudioCapture from "./components/AudioCapture";
 import PhotoCapture from "./components/PhotoCapture";
@@ -180,6 +183,47 @@ export default function App() {
   const [operatorTemp, setOperatorTemp] = useState("");
   const [truckTemp, setTruckTemp] = useState("");
   const [showProfileModal, setShowProfileModal] = useState(false);
+  const [showUnitPicker, setShowUnitPicker] = useState(false);
+  const [isLoadingDropdowns, setIsLoadingDropdowns] = useState(false);
+  const [dropdownsError, setDropdownsError] = useState<string | null>(null);
+  const [isInputFocused, setIsInputFocused] = useState(false);
+
+  interface CustomDialogConfig {
+    title: string;
+    message: string;
+    type: "alert" | "confirm";
+    onConfirm?: () => void;
+    confirmText?: string;
+    cancelText?: string;
+  }
+  const [customDialog, setCustomDialog] = useState<CustomDialogConfig | null>(null);
+
+  const showCustomAlert = (title: string, message: string, onConfirm?: () => void) => {
+    setCustomDialog({
+      title,
+      message,
+      type: "alert",
+      onConfirm,
+      confirmText: "Entendido"
+    });
+  };
+
+  const showCustomConfirm = (
+    title: string,
+    message: string,
+    onConfirm: () => void,
+    confirmText = "Confirmar",
+    cancelText = "Cancelar"
+  ) => {
+    setCustomDialog({
+      title,
+      message,
+      type: "confirm",
+      onConfirm,
+      confirmText,
+      cancelText
+    });
+  };
 
   const [activeTab, setActiveTab] = useState<TabKey>("inicio");
   const [inputType, setInputType] = useState<InputType>("texto");
@@ -348,6 +392,8 @@ export default function App() {
 
   const loadDropdownData = async () => {
     if (!token) return;
+    setIsLoadingDropdowns(true);
+    setDropdownsError(null);
     try {
       const [freshCamiones, freshClientes] = await Promise.all([loadCamiones(token), loadClientes(token)]);
       setCamionesList(freshCamiones);
@@ -357,8 +403,11 @@ export default function App() {
 
       const freshActivities = await loadSheetsActivities(token);
       if (freshActivities?.length > 0) saveActivitiesToLocal(freshActivities);
-    } catch (err) {
+    } catch (err: any) {
       console.warn("Could not load fresh data from Google Sheets. Using cached versions.", err);
+      setDropdownsError(err?.message || "Error al conectar con Google Sheets");
+    } finally {
+      setIsLoadingDropdowns(false);
     }
   };
 
@@ -424,19 +473,25 @@ export default function App() {
   };
 
   const handleLogout = async () => {
-    if (confirm("Cerrar sesión?")) {
-      if (authMode === "family") {
-        localStorage.removeItem("bravo_family_code");
-        setUser(null);
-        setToken(null);
-        setNeedsAuth(true);
-      } else {
-        await logout();
-        setUser(null);
-        setToken(null);
-        setNeedsAuth(true);
-      }
-    }
+    showCustomConfirm(
+      "Cerrar sesión",
+      "¿Estás seguro de que deseas cerrar la sesión actual?",
+      async () => {
+        if (authMode === "family") {
+          localStorage.removeItem("bravo_family_code");
+          setUser(null);
+          setToken(null);
+          setNeedsAuth(true);
+        } else {
+          await logout();
+          setUser(null);
+          setToken(null);
+          setNeedsAuth(true);
+        }
+      },
+      "Cerrar sesión",
+      "Cancelar"
+    );
   };
 
   const handleProcessInput = async (override?: { inputType?: InputType; media?: string | null; mimeType?: string; text?: string }) => {
@@ -494,7 +549,10 @@ export default function App() {
       setActiveTab("captura");
     } catch (err: any) {
       console.error("Gemini Extraction Error:", err);
-      alert(`No se pudo interpretar: ${err.message}. Abriremos captura manual.`);
+      showCustomAlert(
+        "No se pudo interpretar",
+        `${err.message || "Error desconocido"}. Abriremos captura manual para que ingreses los datos.`
+      );
       
       const fallbackData: any = {};
       if (authMode === "family") {
@@ -612,7 +670,7 @@ export default function App() {
         })
       );
     } catch (err: any) {
-      alert("Error al cargar evidencia: " + err.message);
+      showCustomAlert("Error al cargar evidencia", err.message || "Error desconocido");
     } finally {
       setIsUploadingEvidence(false);
     }
@@ -731,12 +789,18 @@ export default function App() {
   };
 
   const handleDiscardRecord = () => {
-    if (confirm("Descartar este registro?")) {
-      setActiveRecord(null);
-      setActiveRecordType(null);
-      setSaveConfirmation(null);
-      setActiveTab("inicio");
-    }
+    showCustomConfirm(
+      "Descartar registro",
+      "¿Deseas descartar este registro de captura actual? Se perderán todos los datos no guardados.",
+      () => {
+        setActiveRecord(null);
+        setActiveRecordType(null);
+        setSaveConfirmation(null);
+        setActiveTab("inicio");
+      },
+      "Descartar",
+      "Cancelar"
+    );
   };
 
   const filteredActivities = useMemo(
@@ -853,27 +917,16 @@ export default function App() {
 
             <div className="space-y-2">
               <label className="text-[11px] font-semibold uppercase tracking-wider text-[var(--bravo-muted)]">Unidad Principal (Opcional)</label>
-              <div className="relative">
-                <select
-                  value={truckTemp}
-                  onChange={(e) => setTruckTemp(e.target.value)}
-                  className="flex h-14 w-full rounded-2xl border border-[var(--bravo-border)] bg-[var(--bravo-surface)] px-4 text-[15px] text-[var(--bravo-ink)] outline-none focus:border-[var(--bravo-ink)]/25 appearance-none pr-10"
-                >
-                  <option value="">Ninguna unidad principal</option>
-                  {camionesList.length === 0 ? (
-                    <option disabled>Cargando unidades...</option>
-                  ) : (
-                    camionesList.map((camion) => (
-                      <option key={camion} value={camion}>
-                        {camion}
-                      </option>
-                    ))
-                  )}
-                </select>
-                <div className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-[var(--bravo-muted)]">
-                  <ChevronRight className="h-4 w-4 rotate-90" />
-                </div>
-              </div>
+              <button
+                type="button"
+                onClick={() => setShowUnitPicker(true)}
+                className="flex h-14 w-full items-center justify-between rounded-2xl border border-[var(--bravo-border)] bg-[var(--bravo-surface)] px-4 text-[15px] text-[var(--bravo-ink)] hover:border-[var(--bravo-ink)]/25 transition text-left"
+              >
+                <span className={truckTemp ? "text-[var(--bravo-ink)]" : "text-[var(--bravo-muted)]"}>
+                  {truckTemp ? truckTemp : "Ninguna unidad principal"}
+                </span>
+                <ChevronRight className="h-4 w-4 rotate-90 text-[var(--bravo-muted)]" />
+              </button>
             </div>
 
             <button
@@ -914,14 +967,15 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-[var(--bravo-bg)] text-[var(--bravo-ink)]">
-      {isProcessing && (
-        <div className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-6 backdrop-blur-sm">
-          <div className="w-full max-w-[260px] rounded-3xl border border-[var(--bravo-border)] bg-[var(--bravo-surface)] p-6 text-center shadow-2xl">
-            <Loader2 className="mx-auto h-8 w-8 animate-spin text-[var(--bravo-muted)]" />
-            <h3 className="mt-4 text-base font-semibold">Procesando captura</h3>
-            <p className="mt-1 text-sm text-[var(--bravo-muted)]">Gemini prepara el registro.</p>
-          </div>
-        </div>
+      {isInputFocused && (
+        <div 
+          className="fixed inset-0 z-40 bg-black/45 backdrop-blur-[1px] transition-all duration-300"
+          onMouseDown={(e) => {
+            e.preventDefault();
+            const el = document.getElementById("text-capture-input");
+            if (el) (el as HTMLElement).blur();
+          }}
+        />
       )}
 
       <div className="mx-auto flex min-h-screen w-full max-w-md flex-col pb-24">
@@ -1003,17 +1057,19 @@ export default function App() {
               </section>
 
               <section className="space-y-4">
-                <div className="bravo-chat-card">
+                <div className={`bravo-chat-card relative overflow-hidden transition-all duration-300 ${isInputFocused ? "z-50 scale-[1.015] bg-[var(--bravo-surface)] border-[var(--bravo-ink)]/15 shadow-[0_20px_50px_rgba(0,0,0,0.6)]" : ""}`}>
                   <textarea
                     id="text-capture-input"
                     value={inputText}
+                    onFocus={() => setIsInputFocused(true)}
+                    onBlur={() => setIsInputFocused(false)}
                     onChange={(event) => {
                       setInputText(event.target.value);
                       setInputType("texto");
                     }}
-                    placeholder={"Cu\u00e9ntame o captura lo que pas\u00f3..."}
+                    placeholder={"Cuéntame o captura lo que pasó..."}
                     rows={4}
-                    className="bravo-chat-input"
+                    className="bravo-chat-input focus:border-[var(--bravo-ink)]/20 focus:bg-black/25 transition-all"
                   />
 
                   <div className="grid grid-cols-2 gap-3">
@@ -1041,7 +1097,7 @@ export default function App() {
                       }}
                     >
                       <Camera className="h-5 w-5" />
-                      <span>{"C\u00e1mara"}</span>
+                      <span>{"Cámara"}</span>
                     </button>
                   </div>
 
@@ -1062,6 +1118,14 @@ export default function App() {
                       </button>
                     )}
                   </div>
+
+                  {isProcessing && inputType === "texto" && (
+                    <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-black/75 backdrop-blur-[2px] p-5 text-center transition-all animate-fade-in">
+                      <Loader2 className="h-8 w-8 animate-spin text-[var(--bravo-muted)]" />
+                      <h4 className="mt-3 text-sm font-semibold text-[var(--bravo-ink)]">Procesando captura</h4>
+                      <p className="mt-1 text-xs text-[var(--bravo-muted)]">Gemini prepara el registro...</p>
+                    </div>
+                  )}
                 </div>
 
                 {inputType === "foto" && (
@@ -1232,27 +1296,16 @@ export default function App() {
 
               <div className="space-y-2">
                 <label className="text-[11px] font-semibold uppercase tracking-wider text-[var(--bravo-muted)]">Unidad Principal (Opcional)</label>
-                <div className="relative">
-                  <select
-                    value={truckTemp}
-                    onChange={(e) => setTruckTemp(e.target.value)}
-                    className="flex h-14 w-full rounded-2xl border border-[var(--bravo-border)] bg-[var(--bravo-bg)] px-4 text-[15px] text-[var(--bravo-ink)] outline-none focus:border-[var(--bravo-ink)]/25 appearance-none pr-10"
-                  >
-                    <option value="">Ninguna unidad principal</option>
-                    {camionesList.length === 0 ? (
-                      <option disabled>Cargando unidades...</option>
-                    ) : (
-                      camionesList.map((camion) => (
-                        <option key={camion} value={camion}>
-                          {camion}
-                        </option>
-                      ))
-                    )}
-                  </select>
-                  <div className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-[var(--bravo-muted)]">
-                    <ChevronRight className="h-4 w-4 rotate-90" />
-                  </div>
-                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowUnitPicker(true)}
+                  className="flex h-14 w-full items-center justify-between rounded-2xl border border-[var(--bravo-border)] bg-[var(--bravo-bg)] px-4 text-[15px] text-[var(--bravo-ink)] hover:border-[var(--bravo-ink)]/25 transition text-left"
+                >
+                  <span className={truckTemp ? "text-[var(--bravo-ink)]" : "text-[var(--bravo-muted)]"}>
+                    {truckTemp ? truckTemp : "Ninguna unidad principal"}
+                  </span>
+                  <ChevronRight className="h-4 w-4 rotate-90 text-[var(--bravo-muted)]" />
+                </button>
               </div>
 
               <div className="pt-4 grid gap-3">
@@ -1275,14 +1328,21 @@ export default function App() {
 
                 <button
                   id="change-operator-btn"
+                  type="button"
                   onClick={() => {
-                    if (confirm("¿Cambiar de operador? Esto borrará tu nombre y unidad principal de este dispositivo.")) {
-                      localStorage.removeItem("bravo_operator_name");
-                      localStorage.removeItem("bravo_default_truck");
-                      setOperatorName("");
-                      setDefaultTruck("");
-                      setShowProfileModal(false);
-                    }
+                    showCustomConfirm(
+                      "¿Cambiar de operador?",
+                      "Esto borrará tu nombre y unidad principal de este dispositivo. ¿Estás seguro?",
+                      () => {
+                        localStorage.removeItem("bravo_operator_name");
+                        localStorage.removeItem("bravo_default_truck");
+                        setOperatorName("");
+                        setDefaultTruck("");
+                        setShowProfileModal(false);
+                      },
+                      "Sí, borrar perfil",
+                      "Cancelar"
+                    );
                   }}
                   className="flex h-14 w-full items-center justify-center gap-3 rounded-2xl border border-red-500/20 bg-red-500/5 text-[15px] font-semibold text-red-400 hover:bg-red-500/10 transition active:scale-[0.99]"
                 >
@@ -1300,6 +1360,128 @@ export default function App() {
                   Cerrar sesión de la cuenta familiar
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showUnitPicker && (
+        <div 
+          className="fixed inset-0 z-50 flex items-end justify-center bg-black/75 p-4 backdrop-blur-sm transition-all duration-300"
+          onClick={() => setShowUnitPicker(false)}
+        >
+          <div 
+            className="max-h-[80vh] w-full max-w-md overflow-hidden rounded-t-[28px] border border-[var(--bravo-border)] bg-[var(--bravo-surface)] shadow-2xl sm:rounded-[28px] flex flex-col transition-transform duration-300"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between border-b border-[var(--bravo-border)] p-5">
+              <div>
+                <h3 className="text-lg font-semibold text-[var(--bravo-ink)]">Seleccionar Unidad</h3>
+                <p className="mt-1 text-xs text-[var(--bravo-muted)]">Elige tu unidad de transporte principal</p>
+              </div>
+              <button
+                onClick={() => setShowUnitPicker(false)}
+                className="rounded-full p-2 hover:bg-white/[0.04] text-[var(--bravo-muted)] hover:text-[var(--bravo-ink)] transition"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            {/* List */}
+            <div className="overflow-y-auto p-5 space-y-2 max-h-[50vh] pb-8">
+              {isLoadingDropdowns ? (
+                <div className="py-12 flex flex-col items-center justify-center space-y-3">
+                  <Loader2 className="h-8 w-8 animate-spin text-[var(--bravo-muted)]" />
+                  <p className="text-sm text-[var(--bravo-muted)]">Cargando unidades...</p>
+                </div>
+              ) : dropdownsError ? (
+                <div className="py-8 flex flex-col items-center justify-center text-center space-y-4">
+                  <AlertCircle className="h-10 w-10 text-red-400" />
+                  <div>
+                    <p className="text-sm font-medium text-red-300">Error al cargar unidades</p>
+                    <p className="text-xs text-[var(--bravo-muted)] mt-1 px-4">{dropdownsError}</p>
+                  </div>
+                  <button
+                    onClick={() => loadDropdownData()}
+                    className="flex items-center gap-2 rounded-xl bg-white/[0.05] border border-[var(--bravo-border)] px-4 py-2 text-xs font-semibold hover:bg-white/[0.08] transition"
+                  >
+                    <RefreshCw className="h-3 w-3" />
+                    <span>Reintentar</span>
+                  </button>
+                </div>
+              ) : (
+                <>
+                  {/* Option: None */}
+                  <button
+                    onClick={() => {
+                      setTruckTemp("");
+                      setShowUnitPicker(false);
+                    }}
+                    className={`flex w-full items-center justify-between rounded-xl px-4 py-4 text-left text-[15px] transition ${
+                      truckTemp === "" 
+                        ? "bg-white/[0.06] font-semibold text-[var(--bravo-ink)]" 
+                        : "text-[var(--bravo-muted)] hover:bg-white/[0.02] hover:text-[var(--bravo-ink)]"
+                    }`}
+                  >
+                    <span>Ninguna unidad principal</span>
+                    {truckTemp === "" && <Check className="h-4 w-4 text-[var(--bravo-ink)]" />}
+                  </button>
+
+                  {/* Options: Loaded units */}
+                  {camionesList.length === 0 ? (
+                    <div className="py-10 text-center text-xs text-[var(--bravo-muted)]">
+                      No se encontraron unidades cargadas.
+                    </div>
+                  ) : (
+                    camionesList.map((camion) => (
+                      <button
+                        key={camion}
+                        onClick={() => {
+                          setTruckTemp(camion);
+                          setShowUnitPicker(false);
+                        }}
+                        className={`flex w-full items-center justify-between rounded-xl px-4 py-4 text-left text-[15px] transition ${
+                          truckTemp === camion 
+                            ? "bg-white/[0.06] font-semibold text-[var(--bravo-ink)]" 
+                            : "text-[var(--bravo-muted)] hover:bg-white/[0.02] hover:text-[var(--bravo-ink)]"
+                        }`}
+                      >
+                        <span>{camion}</span>
+                        {truckTemp === camion && <Check className="h-4 w-4 text-[var(--bravo-ink)]" />}
+                      </button>
+                    ))
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {customDialog && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 p-4 backdrop-blur-sm animate-fade-in">
+          <div className="w-full max-w-sm rounded-[24px] border border-[var(--bravo-border)] bg-[var(--bravo-surface)] p-6 shadow-2xl space-y-4">
+            <h3 className="text-lg font-semibold text-[var(--bravo-ink)]">{customDialog.title}</h3>
+            <p className="text-sm text-[var(--bravo-muted)] leading-relaxed">{customDialog.message}</p>
+            <div className="flex justify-end gap-3 pt-2">
+              {customDialog.type === "confirm" && (
+                <button
+                  onClick={() => setCustomDialog(null)}
+                  className="rounded-xl border border-[var(--bravo-border)] px-4 py-2.5 text-xs font-semibold text-[var(--bravo-muted)] hover:text-[var(--bravo-ink)] transition"
+                >
+                  {customDialog.cancelText || "Cancelar"}
+                </button>
+              )}
+              <button
+                onClick={() => {
+                  if (customDialog.onConfirm) customDialog.onConfirm();
+                  setCustomDialog(null);
+                }}
+                className="rounded-xl bg-white/[0.08] hover:bg-white/[0.12] border border-[var(--bravo-border)] px-5 py-2.5 text-xs font-semibold text-[var(--bravo-ink)] transition"
+              >
+                {customDialog.confirmText || "Aceptar"}
+              </button>
             </div>
           </div>
         </div>
