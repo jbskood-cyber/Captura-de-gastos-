@@ -176,6 +176,263 @@ function getGoogleToken(req: express.Request): string | null {
   return authHeader.replace(/^Bearer\s+/i, "");
 }
 
+// Helper to communicate with Google Apps Script bridge in family mode
+async function callKargoBridge(action: string, data: any): Promise<any> {
+  const bridgeUrl = process.env.KARGO_APPS_SCRIPT_URL;
+  const bridgeSecret = process.env.KARGO_BRIDGE_SECRET;
+
+  if (!bridgeUrl) {
+    throw new Error("La variable de entorno KARGO_APPS_SCRIPT_URL no está configurada.");
+  }
+  if (!bridgeSecret) {
+    throw new Error("La variable de entorno KARGO_BRIDGE_SECRET no está configurada.");
+  }
+
+  const response = await fetch(bridgeUrl, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      secret: bridgeSecret,
+      action: action,
+      data: data,
+    }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Kargo Bridge HTTP Error: ${response.statusText} (${errorText})`);
+  }
+
+  const json: any = await response.json();
+  if (!json.success) {
+    throw new Error(`Kargo Bridge Error: ${json.error || "Error desconocido"}`);
+  }
+
+  return json.data;
+}
+
+// Middleware to check family access code if configured
+function validateFamilyAccess(req: express.Request, res: express.Response, next: express.NextFunction) {
+  if (process.env.AUTH_MODE === "family" && process.env.KARGO_FAMILY_ACCESS_CODE) {
+    const clientCode = req.headers["x-family-access-code"] || req.query.family_access_code;
+    if (clientCode !== process.env.KARGO_FAMILY_ACCESS_CODE) {
+      return res.status(403).json({ error: "Código de acceso familiar incorrecto o ausente." });
+    }
+  }
+  next();
+}
+
+// Family configuration and verification endpoints
+app.get("/api/family/config", (req: express.Request, res: express.Response) => {
+  return res.json({
+    authMode: process.env.AUTH_MODE || "google",
+    requireAccessCode: !!process.env.KARGO_FAMILY_ACCESS_CODE
+  });
+});
+
+app.post("/api/family/verify-code", (req: express.Request, res: express.Response) => {
+  const { code } = req.body;
+  const correctCode = process.env.KARGO_FAMILY_ACCESS_CODE;
+  if (!correctCode) {
+    return res.json({ success: true });
+  }
+  if (code === correctCode) {
+    return res.json({ success: true });
+  }
+  return res.json({ success: false, error: "Código de acceso familiar incorrecto." });
+});
+
+// Family-specific API endpoints to process Gastos, Pagos, Viajes, Upload and Sync
+app.post("/api/family/gasto", validateFamilyAccess, async (req: express.Request, res: express.Response) => {
+  try {
+    const { gasto } = req.body;
+    if (!gasto) return res.status(400).json({ error: "Falta el registro del gasto" });
+    const row = [
+      gasto.ID_gasto,
+      gasto.Fecha,
+      gasto.Hora,
+      gasto.Registrado_por,
+      gasto.Tipo_entrada,
+      gasto.Categoría,
+      gasto.Subcategoría,
+      gasto.Monto_MXN,
+      gasto.Método_pago,
+      gasto.Camión,
+      gasto.Chofer,
+      gasto.Cliente,
+      gasto.Viaje_ID,
+      gasto.Proveedor,
+      gasto.Estado_validación,
+      gasto.Confianza_IA,
+      gasto.URL_evidencia_Drive,
+      gasto.Notas,
+      gasto.Created_at,
+      gasto.Updated_at,
+    ];
+    await callKargoBridge("saveGasto", {
+      row,
+      gastoId: gasto.ID_gasto,
+      registradoPor: gasto.Registrado_por,
+      monto: gasto.Monto_MXN,
+      categoria: gasto.Categoría
+    });
+    return res.json({ success: true });
+  } catch (err: any) {
+    console.error("Error in /api/family/gasto:", err);
+    return res.status(500).json({ error: "Fallo al guardar gasto familiar", details: err.message });
+  }
+});
+
+app.post("/api/family/pago", validateFamilyAccess, async (req: express.Request, res: express.Response) => {
+  try {
+    const { pago } = req.body;
+    if (!pago) return res.status(400).json({ error: "Falta el registro del pago" });
+    const row = [
+      pago.ID_pago,
+      pago.Fecha,
+      pago.Hora,
+      pago.Registrado_por,
+      pago.Cliente,
+      pago.Monto_MXN,
+      pago.Método_pago,
+      pago.Viaje_ID,
+      pago.Saldo_restante_MXN,
+      pago.Estado_pago,
+      pago.URL_evidencia_Drive,
+      pago.Notas,
+      pago.Created_at,
+      pago.Updated_at,
+    ];
+    await callKargoBridge("savePago", {
+      row,
+      pagoId: pago.ID_pago,
+      registradoPor: pago.Registrado_por,
+      monto: pago.Monto_MXN,
+      cliente: pago.Cliente
+    });
+    return res.json({ success: true });
+  } catch (err: any) {
+    console.error("Error in /api/family/pago:", err);
+    return res.status(500).json({ error: "Fallo al guardar pago familiar", details: err.message });
+  }
+});
+
+app.post("/api/family/viaje", validateFamilyAccess, async (req: express.Request, res: express.Response) => {
+  try {
+    const { viaje } = req.body;
+    if (!viaje) return res.status(400).json({ error: "Falta el flete o viaje" });
+    const row = [
+      viaje.ID_viaje,
+      viaje.Fecha,
+      viaje.Hora,
+      viaje.Registrado_por,
+      viaje.Cliente,
+      viaje.Origen,
+      viaje.Destino,
+      viaje.Material,
+      viaje.Metros_cubicos,
+      viaje.Kilómetros,
+      viaje.Camión,
+      viaje.Chofer,
+      viaje.Precio_cobrado_MXN,
+      viaje.Costo_estimado_MXN,
+      viaje.Utilidad_estimada_MXN,
+      viaje.Estado_pago,
+      viaje.URL_evidencia_carga,
+      viaje.URL_evidencia_descarga,
+      viaje.Observaciones,
+      viaje.Created_at,
+      viaje.Updated_at,
+    ];
+    await callKargoBridge("saveViaje", {
+      row,
+      viajeId: viaje.ID_viaje,
+      registradoPor: viaje.Registrado_por,
+      monto: viaje.Precio_cobrado_MXN,
+      cliente: viaje.Cliente
+    });
+    return res.json({ success: true });
+  } catch (err: any) {
+    console.error("Error in /api/family/viaje:", err);
+    return res.status(500).json({ error: "Fallo al guardar viaje familiar", details: err.message });
+  }
+});
+
+app.post("/api/family/upload", validateFamilyAccess, async (req: express.Request, res: express.Response) => {
+  try {
+    const { base64File, fileName, mimeType } = req.body;
+    if (!base64File) return res.status(400).json({ error: "Archivo faltante" });
+    const result = await callKargoBridge("uploadDrive", {
+      base64File,
+      fileName,
+      mimeType
+    });
+    return res.json({ url: result.url });
+  } catch (err: any) {
+    console.error("Error in /api/family/upload:", err);
+    return res.status(500).json({ error: "Fallo al subir evidencia familiar", details: err.message });
+  }
+});
+
+app.post("/api/family/sync", validateFamilyAccess, async (req: express.Request, res: express.Response) => {
+  try {
+    const { queue } = req.body;
+    if (!queue || !Array.isArray(queue)) {
+      return res.status(400).json({ error: "Falta la cola de sincronización" });
+    }
+
+    const results = [];
+    for (const item of queue) {
+      try {
+        if (item._type === "gasto") {
+          const row = [
+            item.ID_gasto, item.Fecha, item.Hora, item.Registrado_por, item.Tipo_entrada,
+            item.Categoría, item.Subcategoría, item.Monto_MXN, item.Método_pago, item.Camión,
+            item.Chofer, item.Cliente, item.Viaje_ID, item.Proveedor, item.Estado_validación,
+            item.Confianza_IA, item.URL_evidencia_Drive, item.Notas, item.Created_at, item.Updated_at
+          ];
+          await callKargoBridge("saveGasto", {
+            row, gastoId: item.ID_gasto, registradoPor: item.Registrado_por,
+            monto: item.Monto_MXN, categoria: item.Categoría
+          });
+        } else if (item._type === "pago") {
+          const row = [
+            item.ID_pago, item.Fecha, item.Hora, item.Registrado_por, item.Cliente,
+            item.Monto_MXN, item.Método_pago, item.Viaje_ID, item.Saldo_restante_MXN,
+            item.Estado_pago, item.URL_evidencia_Drive, item.Notas, item.Created_at, item.Updated_at
+          ];
+          await callKargoBridge("savePago", {
+            row, pagoId: item.ID_pago, registradoPor: item.Registrado_por,
+            monto: item.Monto_MXN, cliente: item.Cliente
+          });
+        } else if (item._type === "viaje") {
+          const row = [
+            item.ID_viaje, item.Fecha, item.Hora, item.Registrado_por, item.Cliente,
+            item.Origen, item.Destino, item.Material, item.Metros_cubicos, item.Kilómetros,
+            item.Camión, item.Chofer, item.Precio_cobrado_MXN, item.Costo_estimado_MXN,
+            item.Utilidad_estimada_MXN, item.Estado_pago, item.URL_evidencia_carga,
+            item.URL_evidencia_descarga, item.Observaciones, item.Created_at, item.Updated_at
+          ];
+          await callKargoBridge("saveViaje", {
+            row, viajeId: item.ID_viaje, registradoPor: item.Registrado_por,
+            monto: item.Precio_cobrado_MXN, cliente: item.Cliente
+          });
+        }
+        results.push({ id: item.ID_gasto || item.ID_pago || item.ID_viaje, success: true });
+      } catch (err: any) {
+        results.push({ id: item.ID_gasto || item.ID_pago || item.ID_viaje, success: false, error: err.message });
+      }
+    }
+
+    return res.json({ success: true, results });
+  } catch (err: any) {
+    console.error("Error in /api/family/sync:", err);
+    return res.status(500).json({ error: "Fallo general al sincronizar cola", details: err.message });
+  }
+});
+
 async function getSheetValues(accessToken: string, range: string): Promise<any[][]> {
   const url = `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${encodeURIComponent(range)}`;
   const response = await fetch(url, {
@@ -242,7 +499,17 @@ async function writeAuditoriaOnServer(
 }
 
 // 1. Dropdowns Endpoint (Camiones and Clientes)
-app.get("/api/sheets/dropdowns", async (req: express.Request, res: express.Response) => {
+app.get("/api/sheets/dropdowns", validateFamilyAccess, async (req: express.Request, res: express.Response) => {
+  if (process.env.AUTH_MODE === "family") {
+    try {
+      const result = await callKargoBridge("getDropdowns", {});
+      return res.json(result);
+    } catch (err: any) {
+      console.error("Error loading dropdowns via bridge:", err);
+      return res.status(500).json({ error: "Fallo al cargar camiones/clientes del puente de Apps Script", details: err.message });
+    }
+  }
+
   const token = getGoogleToken(req);
   if (!token) {
     return res.status(401).json({ error: "No se proporcionó token de autorización." });
@@ -284,7 +551,17 @@ app.get("/api/sheets/dropdowns", async (req: express.Request, res: express.Respo
 });
 
 // 2. Read All Activities (Gastos, Pagos, Viajes)
-app.get("/api/sheets/activities", async (req: express.Request, res: express.Response) => {
+app.get("/api/sheets/activities", validateFamilyAccess, async (req: express.Request, res: express.Response) => {
+  if (process.env.AUTH_MODE === "family") {
+    try {
+      const result = await callKargoBridge("getActivities", {});
+      return res.json(result);
+    } catch (err: any) {
+      console.error("Error loading activities via bridge:", err);
+      return res.status(500).json({ error: "Fallo al obtener registros vía Apps Script Puente.", details: err.message });
+    }
+  }
+
   const token = getGoogleToken(req);
   if (!token) {
     return res.status(401).json({ error: "No se proporcionó token de autorización." });
@@ -381,11 +658,50 @@ app.get("/api/sheets/activities", async (req: express.Request, res: express.Resp
 });
 
 // 3. Save Gasto
-app.post("/api/sheets/gasto", async (req: express.Request, res: express.Response) => {
-  const token = getGoogleToken(req);
-  if (!token) return res.status(401).json({ error: "No autorizado" });
+app.post("/api/sheets/gasto", validateFamilyAccess, async (req: express.Request, res: express.Response) => {
   const { gasto } = req.body;
   if (!gasto) return res.status(400).json({ error: "Falta el registro del gasto" });
+
+  if (process.env.AUTH_MODE === "family") {
+    try {
+      const row = [
+        gasto.ID_gasto,
+        gasto.Fecha,
+        gasto.Hora,
+        gasto.Registrado_por,
+        gasto.Tipo_entrada,
+        gasto.Categoría,
+        gasto.Subcategoría,
+        gasto.Monto_MXN,
+        gasto.Método_pago,
+        gasto.Camión,
+        gasto.Chofer,
+        gasto.Cliente,
+        gasto.Viaje_ID,
+        gasto.Proveedor,
+        gasto.Estado_validación,
+        gasto.Confianza_IA,
+        gasto.URL_evidencia_Drive,
+        gasto.Notas,
+        gasto.Created_at,
+        gasto.Updated_at,
+      ];
+      await callKargoBridge("saveGasto", {
+        row,
+        gastoId: gasto.ID_gasto,
+        registradoPor: gasto.Registrado_por,
+        monto: gasto.Monto_MXN,
+        categoria: gasto.Categoría
+      });
+      return res.json({ success: true });
+    } catch (err: any) {
+      console.error("Error saving gasto via bridge:", err);
+      return res.status(500).json({ error: "Fallo al guardar gasto vía Apps Script Puente.", details: err.message });
+    }
+  }
+
+  const token = getGoogleToken(req);
+  if (!token) return res.status(401).json({ error: "No autorizado" });
 
   try {
     const row = [
@@ -430,11 +746,44 @@ app.post("/api/sheets/gasto", async (req: express.Request, res: express.Response
 });
 
 // 4. Save Pago
-app.post("/api/sheets/pago", async (req: express.Request, res: express.Response) => {
-  const token = getGoogleToken(req);
-  if (!token) return res.status(401).json({ error: "No autorizado" });
+app.post("/api/sheets/pago", validateFamilyAccess, async (req: express.Request, res: express.Response) => {
   const { pago } = req.body;
   if (!pago) return res.status(400).json({ error: "Falta el registro del pago" });
+
+  if (process.env.AUTH_MODE === "family") {
+    try {
+      const row = [
+        pago.ID_pago,
+        pago.Fecha,
+        pago.Hora,
+        pago.Registrado_por,
+        pago.Cliente,
+        pago.Monto_MXN,
+        pago.Método_pago,
+        pago.Viaje_ID,
+        pago.Saldo_restante_MXN,
+        pago.Estado_pago,
+        pago.URL_evidencia_Drive,
+        pago.Notas,
+        pago.Created_at,
+        pago.Updated_at,
+      ];
+      await callKargoBridge("savePago", {
+        row,
+        pagoId: pago.ID_pago,
+        registradoPor: pago.Registrado_por,
+        monto: pago.Monto_MXN,
+        cliente: pago.Cliente
+      });
+      return res.json({ success: true });
+    } catch (err: any) {
+      console.error("Error saving pago via bridge:", err);
+      return res.status(500).json({ error: "Fallo al guardar pago vía Apps Script Puente.", details: err.message });
+    }
+  }
+
+  const token = getGoogleToken(req);
+  if (!token) return res.status(401).json({ error: "No autorizado" });
 
   try {
     const row = [
@@ -473,11 +822,51 @@ app.post("/api/sheets/pago", async (req: express.Request, res: express.Response)
 });
 
 // 5. Save Viaje
-app.post("/api/sheets/viaje", async (req: express.Request, res: express.Response) => {
-  const token = getGoogleToken(req);
-  if (!token) return res.status(401).json({ error: "No autorizado" });
+app.post("/api/sheets/viaje", validateFamilyAccess, async (req: express.Request, res: express.Response) => {
   const { viaje } = req.body;
   if (!viaje) return res.status(400).json({ error: "Falta el flete o viaje" });
+
+  if (process.env.AUTH_MODE === "family") {
+    try {
+      const row = [
+        viaje.ID_viaje,
+        viaje.Fecha,
+        viaje.Hora,
+        viaje.Registrado_por,
+        viaje.Cliente,
+        viaje.Origen,
+        viaje.Destino,
+        viaje.Material,
+        viaje.Metros_cubicos,
+        viaje.Kilómetros,
+        viaje.Camión,
+        viaje.Chofer,
+        viaje.Precio_cobrado_MXN,
+        viaje.Costo_estimado_MXN,
+        viaje.Utilidad_estimada_MXN,
+        viaje.Estado_pago,
+        viaje.URL_evidencia_carga,
+        viaje.URL_evidencia_descarga,
+        viaje.Observaciones,
+        viaje.Created_at,
+        viaje.Updated_at,
+      ];
+      await callKargoBridge("saveViaje", {
+        row,
+        viajeId: viaje.ID_viaje,
+        registradoPor: viaje.Registrado_por,
+        monto: viaje.Precio_cobrado_MXN,
+        cliente: viaje.Cliente
+      });
+      return res.json({ success: true });
+    } catch (err: any) {
+      console.error("Error saving viaje via bridge:", err);
+      return res.status(500).json({ error: "Fallo al guardar flete vía Apps Script Puente.", details: err.message });
+    }
+  }
+
+  const token = getGoogleToken(req);
+  if (!token) return res.status(401).json({ error: "No autorizado" });
 
   try {
     const row = [
@@ -523,10 +912,38 @@ app.post("/api/sheets/viaje", async (req: express.Request, res: express.Response
 });
 
 // 6. Write Auditoria
-app.post("/api/sheets/auditoria", async (req: express.Request, res: express.Response) => {
+app.post("/api/sheets/auditoria", validateFamilyAccess, async (req: express.Request, res: express.Response) => {
+  const { userEmail, accion, detalles, entidad, entidad_id, campo_modificado, valor_anterior, valor_nuevo, notas } = req.body;
+
+  if (process.env.AUTH_MODE === "family") {
+    try {
+      const now = new Date();
+      const fechaHora = now.toISOString().replace("T", " ").substring(0, 19);
+      const id_evento = "AUD-" + Math.floor(100000 + Math.random() * 900000);
+      const fuente = "Captura Bravo PWA (Familiar)";
+      const row = [
+        id_evento,
+        fechaHora,
+        userEmail || "familia",
+        accion || "LOG",
+        entidad || "",
+        entidad_id || "",
+        campo_modificado || "",
+        valor_anterior || "",
+        valor_nuevo || "",
+        fuente,
+        notas || detalles || ""
+      ];
+      await callKargoBridge("saveAuditoria", { row });
+      return res.json({ success: true });
+    } catch (err: any) {
+      return res.status(500).json({ error: "Error de auditoría vía puente", details: err.message });
+    }
+  }
+
   const token = getGoogleToken(req);
   if (!token) return res.status(401).json({ error: "No autorizado" });
-  const { userEmail, accion, detalles, entidad, entidad_id, campo_modificado, valor_anterior, valor_nuevo, notas } = req.body;
+
   try {
     await writeAuditoriaOnServer(
       token,
@@ -546,11 +963,26 @@ app.post("/api/sheets/auditoria", async (req: express.Request, res: express.Resp
 });
 
 // 7. Upload to Google Drive Proxy
-app.post("/api/drive/upload", async (req: express.Request, res: express.Response) => {
-  const token = getGoogleToken(req);
-  if (!token) return res.status(401).json({ error: "No autorizado" });
+app.post("/api/drive/upload", validateFamilyAccess, async (req: express.Request, res: express.Response) => {
   const { base64File, fileName, mimeType } = req.body;
   if (!base64File) return res.status(400).json({ error: "Archivo faltante" });
+
+  if (process.env.AUTH_MODE === "family") {
+    try {
+      const result = await callKargoBridge("uploadDrive", {
+        base64File,
+        fileName,
+        mimeType
+      });
+      return res.json({ url: result.url });
+    } catch (err: any) {
+      console.error("Error uploading via bridge:", err);
+      return res.status(500).json({ error: "Fallo al subir a Google Drive vía Apps Script Puente.", details: err.message });
+    }
+  }
+
+  const token = getGoogleToken(req);
+  if (!token) return res.status(401).json({ error: "No autorizado" });
 
   try {
     const base64Data = base64File.replace(/^data:.*;base64,/, "");
@@ -603,14 +1035,29 @@ app.post("/api/drive/upload", async (req: express.Request, res: express.Response
 });
 
 // 8. Update evidence URL in existing Google Sheet row matching its ID
-app.post("/api/sheets/update-evidence", async (req: express.Request, res: express.Response) => {
-  const token = getGoogleToken(req);
-  if (!token) return res.status(401).json({ error: "No autorizado" });
-  
+app.post("/api/sheets/update-evidence", validateFamilyAccess, async (req: express.Request, res: express.Response) => {
   const { id, type, evidenceUrl, evidenceType } = req.body;
   if (!id || !type || !evidenceUrl) {
     return res.status(400).json({ error: "Faltan parámetros requeridos (id, type, evidenceUrl)" });
   }
+
+  if (process.env.AUTH_MODE === "family") {
+    try {
+      const result = await callKargoBridge("updateEvidence", {
+        id,
+        type,
+        evidenceUrl,
+        evidenceType
+      });
+      return res.json({ success: true, rowIndex: result.rowIndex });
+    } catch (err: any) {
+      console.error("Error updating evidence via bridge:", err);
+      return res.status(500).json({ error: "Fallo al actualizar evidencia vía Apps Script Puente.", details: err.message });
+    }
+  }
+
+  const token = getGoogleToken(req);
+  if (!token) return res.status(401).json({ error: "No autorizado" });
 
   try {
     let sheetName = "";

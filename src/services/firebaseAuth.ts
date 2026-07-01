@@ -88,8 +88,20 @@ export const googleSignIn = async (useRedirect = false): Promise<{ user: User; a
     }
   } catch (error: any) {
     const code = String(error?.code || "");
+    const isIframe = typeof window !== "undefined" && window.self !== window.top;
+    const isAiStudioPreviewHost =
+      typeof window !== "undefined" &&
+      (
+        window.location.hostname.endsWith(".run.app") ||
+        window.location.hostname.includes("aistudio.google.com") ||
+        window.location.hostname.startsWith("ais-dev-") ||
+        window.location.hostname.startsWith("ais-pre-")
+      );
+
     const shouldFallbackToRedirect =
       !useRedirect &&
+      !isIframe &&
+      !isAiStudioPreviewHost &&
       (code.includes("popup-blocked") ||
         code.includes("popup-closed-by-user") ||
         code.includes("cancelled-popup-request") ||

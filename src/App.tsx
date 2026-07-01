@@ -39,10 +39,25 @@ type SaveConfirmation = "synced" | "pending";
 
 const APP_NAME = "Kargo";
 const PENDING_DRIVE = "[PENDIENTE DE SUBIDA A DRIVE]";
-const isPreviewMode =
-  (import.meta as any).env?.DEV === true &&
+const isAiStudioPreviewHost =
+  typeof window !== "undefined" &&
+  (
+    window.location.hostname.endsWith(".run.app") ||
+    window.location.hostname.includes("aistudio.google.com") ||
+    window.location.hostname.startsWith("ais-dev-") ||
+    window.location.hostname.startsWith("ais-pre-")
+  );
+
+const hasPreviewParam =
   typeof window !== "undefined" &&
   new URLSearchParams(window.location.search).get("preview") === "1";
+
+const isPreviewMode =
+  hasPreviewParam &&
+  (
+    (import.meta as any).env?.DEV === true ||
+    isAiStudioPreviewHost
+  );
 const previewUser = { email: "preview@capturabravo.local" };
 
 function previewActivities() {
@@ -155,6 +170,12 @@ export default function App() {
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
 
+  // Family Mode authentication states
+  const [authMode, setAuthMode] = useState<"google" | "family">("google");
+  const [requireFamilyCode, setRequireFamilyCode] = useState(false);
+  const [familyCodeInput, setFamilyCodeInput] = useState("");
+  const [operatorName, setOperatorName] = useState(() => localStorage.getItem("bravo_operator_name") || "");
+
   const [activeTab, setActiveTab] = useState<TabKey>("inicio");
   const [inputType, setInputType] = useState<InputType>("texto");
   const [inputText, setInputText] = useState("");
@@ -185,15 +206,63 @@ export default function App() {
       return () => undefined;
     }
 
-    const unsubscribe = initAuth(
-      (currentUser, currentToken) => {
-        setUser(currentUser);
-        setToken(currentToken);
-        setNeedsAuth(false);
-      },
-      () => setNeedsAuth(true)
-    );
-    return () => unsubscribe();
+    let isMounted = true;
+    let authUnsubscribe: (() => void) | null = null;
+
+    fetch("/api/family/config")
+      .then((res) => res.json())
+      .then((config) => {
+        if (!isMounted) return;
+        setAuthMode(config.authMode || "google");
+        setRequireFamilyCode(!!config.requireAccessCode);
+
+        if (config.authMode === "family") {
+          const savedCode = localStorage.getItem("bravo_family_code") || "";
+          if (!config.requireAccessCode || savedCode) {
+            setUser({ email: "familia@kargo.local", displayName: "Familia Bravo", name: "Familia Bravo" });
+            setToken("family");
+            setNeedsAuth(false);
+          } else {
+            setNeedsAuth(true);
+          }
+        } else {
+          authUnsubscribe = initAuth(
+            (currentUser, currentToken) => {
+              if (!isMounted) return;
+              setUser(currentUser);
+              setToken(currentToken);
+              setNeedsAuth(false);
+            },
+            () => {
+              if (!isMounted) return;
+              setNeedsAuth(true);
+            }
+          );
+        }
+      })
+      .catch((err) => {
+        console.error("Error loading family config, falling back to Google auth", err);
+        if (!isMounted) return;
+        authUnsubscribe = initAuth(
+          (currentUser, currentToken) => {
+            if (!isMounted) return;
+            setUser(currentUser);
+            setToken(currentToken);
+            setNeedsAuth(false);
+          },
+          () => {
+            if (!isMounted) return;
+            setNeedsAuth(true);
+          }
+        );
+      });
+
+    return () => {
+      isMounted = false;
+      if (authUnsubscribe) {
+        authUnsubscribe();
+      }
+    };
   }, []);
 
   useEffect(() => {
@@ -251,12 +320,51 @@ export default function App() {
     }
   };
 
+  const handleFamilyLogin = async () => {
+    setIsLoggingIn(true);
+    setLoginError(null);
+    try {
+      if (requireFamilyCode) {
+        const response = await fetch("/api/family/verify-code", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ code: familyCodeInput }),
+        });
+        const data = await response.json();
+        if (!data.success) {
+          setLoginError(data.error || "Código de acceso familiar incorrecto.");
+          return;
+        }
+        localStorage.setItem("bravo_family_code", familyCodeInput);
+      } else {
+        localStorage.setItem("bravo_family_code", "");
+      }
+      
+      if (operatorName.trim()) {
+        localStorage.setItem("bravo_operator_name", operatorName.trim());
+      } else {
+        localStorage.removeItem("bravo_operator_name");
+      }
+      
+      setUser({ email: "familia@kargo.local", displayName: "Familia Bravo", name: "Familia Bravo" });
+      setToken("family");
+      setNeedsAuth(false);
+    } catch (err: any) {
+      console.error("Family login failed:", err);
+      setLoginError("Error al verificar código: " + err.message);
+    } finally {
+      setIsLoggingIn(false);
+    }
+  };
+
   const handleLogin = async () => {
     setIsLoggingIn(true);
     setLoginError(null);
     try {
       const isIframe = typeof window !== "undefined" && window.self !== window.top;
-      const res = await googleSignIn(isMobileAuthContext() || isIframe);
+      // Never use redirect if we are inside the AI Studio preview iframe or preview host to prevent 403 pages
+      const useRedirect = isMobileAuthContext() && !isIframe && !isAiStudioPreviewHost;
+      const res = await googleSignIn(useRedirect);
       if (res) {
         setUser(res.user);
         setToken(res.accessToken);
@@ -264,18 +372,34 @@ export default function App() {
       }
     } catch (err: any) {
       console.error("Login failed:", err);
-      setLoginError(err?.message || String(err));
+      const errStr = String(err?.message || err?.code || err || "");
+      if (errStr.includes("popup-blocked")) {
+        setLoginError("La ventana emergente fue bloqueada por el navegador. Habilita los popups o abre la app en una pestaña nueva con el botón de la esquina superior.");
+      } else if (errStr.includes("popup-closed-by-user")) {
+        setLoginError("Inicio de sesión cancelado (cerraste la ventana de Google).");
+      } else if (errStr.includes("unauthorized-domain") || errStr.includes("auth/unauthorized-domain")) {
+        setLoginError("Dominio no autorizado en Firebase Auth. Por favor abre la app en una pestaña nueva (URL de Cloud Run directa) o agrega el dominio en Firebase.");
+      } else {
+        setLoginError(err?.message || String(err));
+      }
     } finally {
       setIsLoggingIn(false);
     }
   };
 
   const handleLogout = async () => {
-    if (confirm("Cerrar sesion?")) {
-      await logout();
-      setUser(null);
-      setToken(null);
-      setNeedsAuth(true);
+    if (confirm("Cerrar sesión?")) {
+      if (authMode === "family") {
+        localStorage.removeItem("bravo_family_code");
+        setUser(null);
+        setToken(null);
+        setNeedsAuth(true);
+      } else {
+        await logout();
+        setUser(null);
+        setToken(null);
+        setNeedsAuth(true);
+      }
     }
   };
 
@@ -344,6 +468,13 @@ export default function App() {
     setIsProcessing(true);
     setNetworkError(null);
 
+    // Auto-populate Registered_by / Registrado_por for Google/Family modes
+    if (authMode === "family" && operatorName.trim()) {
+      finalizedRecord.Registrado_por = operatorName.trim();
+    } else if (!finalizedRecord.Registrado_por) {
+      finalizedRecord.Registrado_por = user?.email || "Familia Bravo";
+    }
+
     const isOnline = navigator.onLine && token;
     let confirmation: SaveConfirmation = "synced";
     if (isOnline) {
@@ -371,7 +502,7 @@ export default function App() {
         console.error("Fallo guardado online (Sheets/Drive):", err);
         setStatus(finalizedRecord, "pendiente_sync");
         attachPendingDrivePlaceholder(finalizedRecord);
-        setNetworkError("Guardado local; se sincronizar\u00e1 despues");
+        setNetworkError("Guardado local; se sincronizará después");
         confirmation = "pending";
         saveQueueToLocal([
           ...pendingSyncQueue,
@@ -381,7 +512,7 @@ export default function App() {
     } else {
       setStatus(finalizedRecord, "pendiente_sync");
       attachPendingDrivePlaceholder(finalizedRecord);
-      setNetworkError("Sin conexi\u00f3n; guardado en cola local");
+      setNetworkError("Sin conexión; guardado en cola local");
       confirmation = "pending";
       saveQueueToLocal([
         ...pendingSyncQueue,
@@ -436,32 +567,94 @@ export default function App() {
     const remainingQueue: any[] = [];
     const updatedActivities = [...recentActivities];
 
-    for (const item of pendingSyncQueue) {
+    if (authMode === "family") {
       try {
-        const hasPendingMedia =
-          item.record.URL_evidencia_Drive === PENDING_DRIVE ||
-          item.record.URL_evidencia_carga === PENDING_DRIVE ||
-          item.record.URL_evidencia_descarga === PENDING_DRIVE;
+        const familyCode = localStorage.getItem("bravo_family_code") || "";
+        
+        // Let's first upload any local pending media items to Drive via bridge
+        for (const item of pendingSyncQueue) {
+          try {
+            const hasPendingMedia =
+              item.record.URL_evidencia_Drive === PENDING_DRIVE ||
+              item.record.URL_evidencia_carga === PENDING_DRIVE ||
+              item.record.URL_evidencia_descarga === PENDING_DRIVE;
 
-        if (hasPendingMedia && item.localMediaData) {
-          const res = await fetch(item.localMediaData);
-          const blob = await res.blob();
-          const driveLink = await uploadFileToDrive(token, blob, `EVIDENCIA_SYNC_${Date.now()}.jpg`, item.localMediaMime || "image/jpeg");
-          if (item.record.URL_evidencia_Drive === PENDING_DRIVE) item.record.URL_evidencia_Drive = driveLink;
-          if (item.record.URL_evidencia_carga === PENDING_DRIVE) item.record.URL_evidencia_carga = driveLink;
-          if (item.record.URL_evidencia_descarga === PENDING_DRIVE) item.record.URL_evidencia_descarga = driveLink;
+            if (hasPendingMedia && item.localMediaData) {
+              const res = await fetch(item.localMediaData);
+              const blob = await res.blob();
+              const driveLink = await uploadFileToDrive("family", blob, `EVIDENCIA_SYNC_${Date.now()}.jpg`, item.localMediaMime || "image/jpeg");
+              if (item.record.URL_evidencia_Drive === PENDING_DRIVE) item.record.URL_evidencia_Drive = driveLink;
+              if (item.record.URL_evidencia_carga === PENDING_DRIVE) item.record.URL_evidencia_carga = driveLink;
+              if (item.record.URL_evidencia_descarga === PENDING_DRIVE) item.record.URL_evidencia_descarga = driveLink;
+            }
+          } catch (err) {
+            console.error("Fallo al subir evidencia de la cola en modo familiar:", err);
+          }
         }
 
-        if (item.type === "gasto") await saveGastoToSheet(token, item.record);
-        if (item.type === "pago") await savePagoToSheet(token, item.record);
-        if (item.type === "viaje") await saveViajeToSheet(token, item.record);
+        const response = await fetch("/api/family/sync", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Family-Access-Code": familyCode
+          },
+          body: JSON.stringify({ queue: pendingSyncQueue.map(q => ({ ...q.record, _type: q.type })) })
+        });
 
-        const id = item.record.ID_gasto || item.record.ID_pago || item.record.ID_viaje;
-        const activityIndex = updatedActivities.findIndex((act) => (act.ID_gasto || act.ID_pago || act.ID_viaje) === id);
-        if (activityIndex > -1) updatedActivities[activityIndex] = { ...item.record, _type: item.type, ["Estado_validaci\u00f3n"]: "validado" };
-      } catch (err) {
-        console.error("Could not sync item:", item, err);
-        remainingQueue.push(item);
+        if (!response.ok) {
+          const errText = await response.text();
+          throw new Error(`Sync bridge failed: ${errText}`);
+        }
+
+        const data = await response.json();
+        
+        pendingSyncQueue.forEach((item, idx) => {
+          const resItem = data.results?.[idx];
+          if (resItem && resItem.success) {
+            const id = item.record.ID_gasto || item.record.ID_pago || item.record.ID_viaje;
+            const activityIndex = updatedActivities.findIndex((act) => (act.ID_gasto || act.ID_pago || act.ID_viaje) === id);
+            if (activityIndex > -1) {
+              updatedActivities[activityIndex] = { ...item.record, _type: item.type, ["Estado_validaci\u00f3n"]: "validado" };
+            }
+          } else {
+            remainingQueue.push(item);
+          }
+        });
+      } catch (err: any) {
+        console.error("Could not sync family queue:", err);
+        setNetworkError("Fallo sincronización: " + err.message);
+        setIsSyncing(false);
+        return;
+      }
+    } else {
+      // Normal Google Auth Sync
+      for (const item of pendingSyncQueue) {
+        try {
+          const hasPendingMedia =
+            item.record.URL_evidencia_Drive === PENDING_DRIVE ||
+            item.record.URL_evidencia_carga === PENDING_DRIVE ||
+            item.record.URL_evidencia_descarga === PENDING_DRIVE;
+
+          if (hasPendingMedia && item.localMediaData) {
+            const res = await fetch(item.localMediaData);
+            const blob = await res.blob();
+            const driveLink = await uploadFileToDrive(token, blob, `EVIDENCIA_SYNC_${Date.now()}.jpg`, item.localMediaMime || "image/jpeg");
+            if (item.record.URL_evidencia_Drive === PENDING_DRIVE) item.record.URL_evidencia_Drive = driveLink;
+            if (item.record.URL_evidencia_carga === PENDING_DRIVE) item.record.URL_evidencia_carga = driveLink;
+            if (item.record.URL_evidencia_descarga === PENDING_DRIVE) item.record.URL_evidencia_descarga = driveLink;
+          }
+
+          if (item.type === "gasto") await saveGastoToSheet(token, item.record);
+          if (item.type === "pago") await savePagoToSheet(token, item.record);
+          if (item.type === "viaje") await saveViajeToSheet(token, item.record);
+
+          const id = item.record.ID_gasto || item.record.ID_pago || item.record.ID_viaje;
+          const activityIndex = updatedActivities.findIndex((act) => (act.ID_gasto || act.ID_pago || act.ID_viaje) === id);
+          if (activityIndex > -1) updatedActivities[activityIndex] = { ...item.record, _type: item.type, ["Estado_validaci\u00f3n"]: "validado" };
+        } catch (err) {
+          console.error("Could not sync item:", item, err);
+          remainingQueue.push(item);
+        }
       }
     }
 
@@ -474,7 +667,7 @@ export default function App() {
       setNetworkError(null);
       loadDropdownData();
     } else {
-      setNetworkError("Sincronizaci\u00f3n parcial");
+      setNetworkError("Sincronización parcial");
     }
   };
 
@@ -510,21 +703,60 @@ export default function App() {
             </div>
             <h1 className="text-[28px] font-semibold">{APP_NAME}</h1>
             <p className="mx-auto mt-3 max-w-[230px] text-[15px] leading-6 text-[var(--bravo-muted)]">
-              Registra gastos, pagos y viajes.
+              {authMode === "family" ? "Acceso al Modo Familiar Kargo." : "Registra gastos, pagos y viajes."}
             </p>
           </div>
 
           <div className="space-y-4 pb-7">
             {loginError && <div className="rounded-2xl border border-red-500/20 bg-red-500/10 p-4 text-sm text-red-200">{loginError}</div>}
-            <button
-              id="google-signin-btn"
-              onClick={handleLogin}
-              disabled={isLoggingIn}
-              className="flex h-14 w-full items-center justify-center gap-3 rounded-2xl border border-[var(--bravo-border)] bg-[var(--bravo-surface)] text-[15px] font-semibold text-[var(--bravo-ink)] transition active:scale-[0.99] disabled:opacity-60"
-            >
-              {isLoggingIn ? <Loader2 className="h-5 w-5 animate-spin" /> : <span className="grid h-5 w-5 place-items-center rounded-full border border-[var(--bravo-border)] text-[11px] font-bold">G</span>}
-              <span>Continuar con Google</span>
-            </button>
+            
+            {authMode === "family" ? (
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <label className="text-[11px] font-semibold uppercase tracking-wider text-[var(--bravo-muted)]">¿Quién registra? (Opcional)</label>
+                  <input
+                    type="text"
+                    placeholder="Ej: Papá, Josue..."
+                    value={operatorName}
+                    onChange={(e) => setOperatorName(e.target.value)}
+                    className="flex h-14 w-full rounded-2xl border border-[var(--bravo-border)] bg-[var(--bravo-surface)] px-4 text-[15px] text-[var(--bravo-ink)] placeholder-[var(--bravo-muted)] outline-none focus:border-[var(--bravo-ink)]/25"
+                  />
+                </div>
+                
+                {requireFamilyCode && (
+                  <div className="space-y-2">
+                    <label className="text-[11px] font-semibold uppercase tracking-wider text-[var(--bravo-muted)]">Código de Acceso Familiar</label>
+                    <input
+                      type="password"
+                      placeholder="Código de acceso"
+                      value={familyCodeInput}
+                      onChange={(e) => setFamilyCodeInput(e.target.value)}
+                      className="flex h-14 w-full rounded-2xl border border-[var(--bravo-border)] bg-[var(--bravo-surface)] px-4 text-[15px] text-[var(--bravo-ink)] placeholder-[var(--bravo-muted)] outline-none focus:border-[var(--bravo-ink)]/25"
+                    />
+                  </div>
+                )}
+
+                <button
+                  id="family-signin-btn"
+                  onClick={handleFamilyLogin}
+                  disabled={isLoggingIn || (requireFamilyCode && !familyCodeInput.trim())}
+                  className="flex h-14 w-full items-center justify-center gap-3 rounded-2xl border border-[var(--bravo-border)] bg-[var(--bravo-surface)] text-[15px] font-semibold text-[var(--bravo-ink)] transition active:scale-[0.99] disabled:opacity-60"
+                >
+                  {isLoggingIn ? <Loader2 className="h-5 w-5 animate-spin" /> : <Sparkles className="h-5 w-5 text-[var(--bravo-muted)]" />}
+                  <span>Entrar a Kargo</span>
+                </button>
+              </div>
+            ) : (
+              <button
+                id="google-signin-btn"
+                onClick={handleLogin}
+                disabled={isLoggingIn}
+                className="flex h-14 w-full items-center justify-center gap-3 rounded-2xl border border-[var(--bravo-border)] bg-[var(--bravo-surface)] text-[15px] font-semibold text-[var(--bravo-ink)] transition active:scale-[0.99] disabled:opacity-60"
+              >
+                {isLoggingIn ? <Loader2 className="h-5 w-5 animate-spin" /> : <span className="grid h-5 w-5 place-items-center rounded-full border border-[var(--bravo-border)] text-[11px] font-bold">G</span>}
+                <span>Continuar con Google</span>
+              </button>
+            )}
           </div>
         </main>
       </div>

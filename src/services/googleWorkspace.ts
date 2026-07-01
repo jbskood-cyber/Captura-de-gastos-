@@ -5,13 +5,28 @@ const FALLBACK_CAMIONES: string[] = [];
 
 const FALLBACK_CLIENTES: string[] = [];
 
+function getHeaders(accessToken: string): Record<string, string> {
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  };
+  
+  if (accessToken === "family") {
+    const familyCode = localStorage.getItem("bravo_family_code") || "";
+    headers["X-Family-Access-Code"] = familyCode;
+  } else {
+    headers["Authorization"] = `Bearer ${accessToken}`;
+  }
+  
+  return headers;
+}
+
 /**
  * Loads Camiones dropdown list from server proxy
  */
 export async function loadCamiones(accessToken: string): Promise<string[]> {
   try {
     const response = await fetch("/api/sheets/dropdowns", {
-      headers: { Authorization: `Bearer ${accessToken}` },
+      headers: getHeaders(accessToken),
     });
     if (!response.ok) throw new Error("Server dropdowns fetch failed");
     const data = await response.json();
@@ -28,7 +43,7 @@ export async function loadCamiones(accessToken: string): Promise<string[]> {
 export async function loadClientes(accessToken: string): Promise<string[]> {
   try {
     const response = await fetch("/api/sheets/dropdowns", {
-      headers: { Authorization: `Bearer ${accessToken}` },
+      headers: getHeaders(accessToken),
     });
     if (!response.ok) throw new Error("Server dropdowns fetch failed");
     const data = await response.json();
@@ -44,7 +59,7 @@ export async function loadClientes(accessToken: string): Promise<string[]> {
  */
 export async function loadSheetsActivities(accessToken: string): Promise<any[]> {
   const response = await fetch("/api/sheets/activities", {
-    headers: { Authorization: `Bearer ${accessToken}` },
+    headers: getHeaders(accessToken),
   });
   if (!response.ok) {
     throw new Error(`Server activities fetch failed: ${response.statusText}`);
@@ -70,10 +85,7 @@ export async function writeAuditoria(
   try {
     const response = await fetch("/api/sheets/auditoria", {
       method: "POST",
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "Content-Type": "application/json",
-      },
+      headers: getHeaders(accessToken),
       body: JSON.stringify({
         userEmail,
         accion,
@@ -97,18 +109,18 @@ export async function writeAuditoria(
  * Save Gasto record to Google Sheets via server proxy
  */
 export async function saveGastoToSheet(accessToken: string, gasto: Gasto): Promise<void> {
-  const response = await fetch("/api/sheets/gasto", {
+  const isFamily = accessToken === "family";
+  const url = isFamily ? "/api/family/gasto" : "/api/sheets/gasto";
+  
+  const response = await fetch(url, {
     method: "POST",
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      "Content-Type": "application/json",
-    },
+    headers: getHeaders(accessToken),
     body: JSON.stringify({ gasto }),
   });
 
   if (!response.ok) {
     const txt = await response.text();
-    throw new Error(`Error guardando Gasto via proxy: ${response.statusText} (${txt})`);
+    throw new Error(`Error guardando Gasto: ${response.statusText} (${txt})`);
   }
 }
 
@@ -116,18 +128,18 @@ export async function saveGastoToSheet(accessToken: string, gasto: Gasto): Promi
  * Save Pago record to Google Sheets via server proxy
  */
 export async function savePagoToSheet(accessToken: string, pago: Pago): Promise<void> {
-  const response = await fetch("/api/sheets/pago", {
+  const isFamily = accessToken === "family";
+  const url = isFamily ? "/api/family/pago" : "/api/sheets/pago";
+
+  const response = await fetch(url, {
     method: "POST",
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      "Content-Type": "application/json",
-    },
+    headers: getHeaders(accessToken),
     body: JSON.stringify({ pago }),
   });
 
   if (!response.ok) {
     const txt = await response.text();
-    throw new Error(`Error guardando Pago via proxy: ${response.statusText} (${txt})`);
+    throw new Error(`Error guardando Pago: ${response.statusText} (${txt})`);
   }
 }
 
@@ -135,18 +147,18 @@ export async function savePagoToSheet(accessToken: string, pago: Pago): Promise<
  * Save Viaje record to Google Sheets via server proxy
  */
 export async function saveViajeToSheet(accessToken: string, viaje: Viaje): Promise<void> {
-  const response = await fetch("/api/sheets/viaje", {
+  const isFamily = accessToken === "family";
+  const url = isFamily ? "/api/family/viaje" : "/api/sheets/viaje";
+
+  const response = await fetch(url, {
     method: "POST",
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      "Content-Type": "application/json",
-    },
+    headers: getHeaders(accessToken),
     body: JSON.stringify({ viaje }),
   });
 
   if (!response.ok) {
     const txt = await response.text();
-    throw new Error(`Error guardando Viaje via proxy: ${response.statusText} (${txt})`);
+    throw new Error(`Error guardando Viaje: ${response.statusText} (${txt})`);
   }
 }
 
@@ -167,12 +179,12 @@ export async function uploadFileToDrive(
     reader.readAsDataURL(fileBlob);
   });
 
-  const response = await fetch("/api/drive/upload", {
+  const isFamily = accessToken === "family";
+  const url = isFamily ? "/api/family/upload" : "/api/drive/upload";
+
+  const response = await fetch(url, {
     method: "POST",
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      "Content-Type": "application/json",
-    },
+    headers: getHeaders(accessToken),
     body: JSON.stringify({ base64File, fileName, mimeType }),
   });
 
@@ -197,10 +209,7 @@ export async function updateEvidenceInSheet(
 ): Promise<void> {
   const response = await fetch("/api/sheets/update-evidence", {
     method: "POST",
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      "Content-Type": "application/json",
-    },
+    headers: getHeaders(accessToken),
     body: JSON.stringify({ id, type, evidenceUrl, evidenceType }),
   });
 
