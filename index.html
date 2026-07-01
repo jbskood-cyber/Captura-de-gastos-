@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <title>Kargo</title>
     <link rel="manifest" href="/manifest.json" />
-    <link rel="stylesheet" href="/premium-ux.css" />
     <meta name="theme-color" content="#090b0f" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -16,6 +15,15 @@
   <body class="bg-[#090b0f] text-white select-none antialiased">
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
-    <script src="/premium-ux.js"></script>
+    <script>
+      if ("serviceWorker" in navigator) {
+        window.addEventListener("load", () => {
+          navigator.serviceWorker
+            .register("/sw.js")
+            .then((reg) => console.log("Service Worker registrado:", reg.scope))
+            .catch((err) => console.error("Error al registrar Service Worker:", err));
+        });
+      }
+    </script>
   </body>
 </html>

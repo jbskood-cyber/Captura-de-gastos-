@@ -165,14 +165,14 @@ function isThisWeek(item: any) {
 }
 
 export default function App() {
-  const [user, setUser] = useState<any>(null);
-  const [token, setToken] = useState<string | null>(null);
-  const [needsAuth, setNeedsAuth] = useState(true);
+  const [user, setUser] = useState<any>(() => localStorage.getItem("bravo_family_code") ? { email: "familia@kargo.local", displayName: "Familia Bravo", name: "Familia Bravo" } : null);
+  const [token, setToken] = useState<string | null>(() => localStorage.getItem("bravo_family_code") ? "family" : null);
+  const [needsAuth, setNeedsAuth] = useState(() => !localStorage.getItem("bravo_family_code"));
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
 
   // Family Mode authentication states
-  const [authMode, setAuthMode] = useState<"google" | "family">("google");
+  const [authMode, setAuthMode] = useState<"google" | "family">("family");
   const [requireFamilyCode, setRequireFamilyCode] = useState(false);
   const [familyCodeInput, setFamilyCodeInput] = useState("");
   const [operatorName, setOperatorName] = useState(() => localStorage.getItem("bravo_operator_name") || "");
@@ -254,16 +254,19 @@ export default function App() {
       .then((res) => res.json())
       .then((config) => {
         if (!isMounted) return;
-        setAuthMode(config.authMode || "google");
+        const currentMode = config.authMode || "family";
+        setAuthMode(currentMode);
         setRequireFamilyCode(!!config.requireAccessCode);
 
-        if (config.authMode === "family") {
+        if (currentMode === "family") {
           const savedCode = localStorage.getItem("bravo_family_code") || "";
           if (!config.requireAccessCode || savedCode) {
             setUser({ email: "familia@kargo.local", displayName: "Familia Bravo", name: "Familia Bravo" });
             setToken("family");
             setNeedsAuth(false);
           } else {
+            setUser(null);
+            setToken(null);
             setNeedsAuth(true);
           }
         } else {
@@ -282,20 +285,18 @@ export default function App() {
         }
       })
       .catch((err) => {
-        console.error("Error loading family config, falling back to Google auth", err);
+        console.error("Error loading family config, falling back to offline family mode", err);
         if (!isMounted) return;
-        authUnsubscribe = initAuth(
-          (currentUser, currentToken) => {
-            if (!isMounted) return;
-            setUser(currentUser);
-            setToken(currentToken);
-            setNeedsAuth(false);
-          },
-          () => {
-            if (!isMounted) return;
-            setNeedsAuth(true);
-          }
-        );
+        setAuthMode("family");
+        setRequireFamilyCode(true);
+        const savedCode = localStorage.getItem("bravo_family_code") || "";
+        if (savedCode) {
+          setUser({ email: "familia@kargo.local", displayName: "Familia Bravo", name: "Familia Bravo" });
+          setToken("family");
+          setNeedsAuth(false);
+        } else {
+          setNeedsAuth(true);
+        }
       });
 
     return () => {
