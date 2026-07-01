@@ -203,6 +203,42 @@ export default function App() {
   const [selectedDetailItem, setSelectedDetailItem] = useState<any | null>(null);
   const [isUploadingEvidence, setIsUploadingEvidence] = useState(false);
 
+  const handleCompleteReset = () => {
+    localStorage.removeItem("bravo_family_code");
+    localStorage.removeItem("bravo_operator_name");
+    localStorage.removeItem("bravo_default_truck");
+    localStorage.removeItem("bravo_activities");
+    localStorage.removeItem("bravo_sync_queue");
+    localStorage.removeItem("google_access_token");
+    localStorage.removeItem("bravo_camiones");
+    localStorage.removeItem("bravo_clientes");
+    
+    if ("caches" in window) {
+      caches.keys().then((names) => {
+        for (const name of names) {
+          caches.delete(name);
+        }
+      });
+    }
+    
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.getRegistrations().then((registrations) => {
+        for (const registration of registrations) {
+          registration.unregister();
+        }
+      });
+    }
+    
+    window.location.href = window.location.origin + window.location.pathname;
+  };
+
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.has("reset") || urlParams.get("reset") === "1") {
+      handleCompleteReset();
+    }
+  }, []);
+
   useEffect(() => {
     if (isPreviewMode) {
       setUser(previewUser);
@@ -772,6 +808,15 @@ export default function App() {
                 <span>Continuar con Google</span>
               </button>
             )}
+
+            <div className="pt-4 flex justify-center">
+              <button
+                onClick={handleCompleteReset}
+                className="text-xs font-semibold text-[var(--bravo-muted)] hover:text-red-400 py-2 transition"
+              >
+                Reiniciar acceso
+              </button>
+            </div>
           </div>
         </main>
       </div>
