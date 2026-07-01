@@ -816,10 +816,16 @@ export default function App() {
     [recentActivities, searchQuery]
   );
 
-  if (needsAuth) {
-    return (
-      <div className="min-h-screen bg-[var(--bravo-bg)] text-[var(--bravo-ink)]">
-        <main className="mx-auto flex min-h-screen w-full max-w-md flex-col justify-between px-6 py-10">
+  const hasOperator = !!operatorName.trim();
+  const navItems: Array<{ key: TabKey; label: string; icon: React.ReactNode }> = [
+    { key: "inicio", label: "Captura", icon: <Sparkles className="h-5 w-5" /> },
+    { key: "historial", label: "Historial", icon: <Clock3 className="h-5 w-5" /> },
+  ];
+
+  return (
+    <div className="min-h-screen bg-[var(--bravo-bg)] text-[var(--bravo-ink)]">
+      {needsAuth ? (
+        <main className="mx-auto flex min-h-screen w-full max-w-md flex-col justify-between px-6 py-10 animate-fade-in">
           <div className="pt-24 text-center">
             <div className="mx-auto mb-7 grid h-12 w-12 place-items-center rounded-2xl border border-[var(--bravo-border)] bg-[var(--bravo-surface)]">
               <Truck className="h-5 w-5 text-[var(--bravo-muted)]" />
@@ -884,15 +890,8 @@ export default function App() {
             </div>
           </div>
         </main>
-      </div>
-    );
-  }
-
-  const hasOperator = !!operatorName.trim();
-  if (authMode === "family" && !hasOperator) {
-    return (
-      <div className="min-h-screen bg-[var(--bravo-bg)] text-[var(--bravo-ink)]">
-        <main className="mx-auto flex min-h-screen w-full max-w-md flex-col justify-between px-6 py-10">
+      ) : (authMode === "family" && !hasOperator) ? (
+        <main className="mx-auto flex min-h-screen w-full max-w-md flex-col justify-between px-6 py-10 animate-fade-in">
           <div className="pt-20 text-center">
             <div className="mx-auto mb-7 grid h-12 w-12 place-items-center rounded-2xl border border-[var(--bravo-border)] bg-[var(--bravo-surface)]">
               <Sparkles className="h-5 w-5 text-[var(--bravo-muted)]" />
@@ -916,7 +915,7 @@ export default function App() {
             </div>
 
             <div className="space-y-2">
-              <label className="text-[11px] font-semibold uppercase tracking-wider text-[var(--bravo-muted)]">Unidad Principal (Opcional)</label>
+              <label className="text-[11px] font-semibold uppercase tracking-wider text(--bravo-muted)">Unidad Principal (Opcional)</label>
               <button
                 type="button"
                 onClick={() => setShowUnitPicker(true)}
@@ -956,29 +955,20 @@ export default function App() {
             </button>
           </div>
         </main>
-      </div>
-    );
-  }
+      ) : (
+        <>
+          {isInputFocused && (
+            <div 
+              className="fixed inset-0 z-40 bg-black/45 backdrop-blur-[1px] transition-all duration-300"
+              onMouseDown={(e) => {
+                e.preventDefault();
+                const el = document.getElementById("text-capture-input");
+                if (el) (el as HTMLElement).blur();
+              }}
+            />
+          )}
 
-  const navItems: Array<{ key: TabKey; label: string; icon: React.ReactNode }> = [
-    { key: "inicio", label: "Captura", icon: <Sparkles className="h-5 w-5" /> },
-    { key: "historial", label: "Historial", icon: <Clock3 className="h-5 w-5" /> },
-  ];
-
-  return (
-    <div className="min-h-screen bg-[var(--bravo-bg)] text-[var(--bravo-ink)]">
-      {isInputFocused && (
-        <div 
-          className="fixed inset-0 z-40 bg-black/45 backdrop-blur-[1px] transition-all duration-300"
-          onMouseDown={(e) => {
-            e.preventDefault();
-            const el = document.getElementById("text-capture-input");
-            if (el) (el as HTMLElement).blur();
-          }}
-        />
-      )}
-
-      <div className="mx-auto flex min-h-screen w-full max-w-md flex-col pb-24">
+          <div className="mx-auto flex min-h-screen w-full max-w-md flex-col pb-24">
         <header className="sticky top-0 z-30 border-b border-[var(--bravo-border)] bg-[var(--bravo-bg)]/90 px-5 py-4 backdrop-blur-xl">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -1264,6 +1254,8 @@ export default function App() {
             </div>
           </div>
         </div>
+      )}
+        </>
       )}
 
       {showProfileModal && (
