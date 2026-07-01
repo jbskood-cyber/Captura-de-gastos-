@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import {
   AlertCircle,
   Camera,
+  CheckCircle2,
   ChevronRight,
   Clock3,
   FileText,
@@ -34,22 +35,21 @@ import { RecordType } from "./types";
 
 type TabKey = "inicio" | "captura" | "historial";
 type InputType = "audio" | "foto" | "texto";
-type FilterType = "todos" | RecordType;
-type FilterStatus = "todos" | "pendiente_sync" | "validado";
+type SaveConfirmation = "synced" | "pending";
 
 const PENDING_DRIVE = "[PENDIENTE DE SUBIDA A DRIVE]";
 
 const text = (value: unknown) => String(value ?? "");
 const money = (value: unknown) => Number(value || 0).toLocaleString("es-MX");
-const getStatus = (item: any) => item.Estado_validacion || item.Estado_validación || item["Estado_validaciÃ³n"];
+const getStatus = (item: any) => item.Estado_validacion || item["Estado_validaci\u00f3n"];
 const setStatus = (item: any, value: string) => {
-  item.Estado_validación = value;
+  item["Estado_validaci\u00f3n"] = value;
   item.Estado_validacion = value;
 };
-const getCategory = (item: any) => item.Categoría || item.Categoria || item["CategorÃ­a"] || "";
-const getPaymentMethod = (item: any) => item.Método_pago || item.Metodo_pago || item["MÃ©todo_pago"] || "";
-const getTruck = (item: any) => item.Camión || item.Camion || item["CamiÃ³n"] || "";
-const getKm = (item: any) => item.Kilómetros || item.Kilometros || item["KilÃ³metros"] || 0;
+const getCategory = (item: any) => item["Categor\u00eda"] || item.Categoria || "";
+const getPaymentMethod = (item: any) => item["M\u00e9todo_pago"] || item.Metodo_pago || "";
+const getTruck = (item: any) => item["Cami\u00f3n"] || item.Camion || "";
+const getKm = (item: any) => item["Kil\u00f3metros"] || item.Kilometros || 0;
 
 function isMobileAuthContext() {
   if (typeof navigator === "undefined") return false;
@@ -84,6 +84,19 @@ function activityAmount(item: any) {
   return item.Monto_MXN || item.Precio_cobrado_MXN || 0;
 }
 
+function isThisWeek(item: any) {
+  if (!item.Fecha) return false;
+  const date = new Date(`${item.Fecha}T00:00:00`);
+  if (Number.isNaN(date.getTime())) return false;
+  const now = new Date();
+  const start = new Date(now);
+  start.setDate(now.getDate() - now.getDay());
+  start.setHours(0, 0, 0, 0);
+  const end = new Date(start);
+  end.setDate(start.getDate() + 7);
+  return date >= start && date < end;
+}
+
 export default function App() {
   const [user, setUser] = useState<any>(null);
   const [token, setToken] = useState<string | null>(null);
@@ -99,6 +112,7 @@ export default function App() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [activeRecord, setActiveRecord] = useState<any>(null);
   const [activeRecordType, setActiveRecordType] = useState<RecordType | null>(null);
+  const [saveConfirmation, setSaveConfirmation] = useState<SaveConfirmation | null>(null);
 
   const [camionesList, setCamionesList] = useState<string[]>([]);
   const [clientesList, setClientesList] = useState<string[]>([]);
@@ -109,8 +123,6 @@ export default function App() {
   const [isSyncing, setIsSyncing] = useState(false);
 
   const [searchQuery, setSearchQuery] = useState("");
-  const [filterType, setFilterType] = useState<FilterType>("todos");
-  const [filterStatus, setFilterStatus] = useState<FilterStatus>("todos");
   const [selectedDetailItem, setSelectedDetailItem] = useState<any | null>(null);
   const [isUploadingEvidence, setIsUploadingEvidence] = useState(false);
 
@@ -194,6 +206,7 @@ export default function App() {
   };
 
   const handleProcessInput = async () => {
+    setSaveConfirmation(null);
     setIsProcessing(true);
     setNetworkError(null);
 
@@ -254,6 +267,7 @@ export default function App() {
     setNetworkError(null);
 
     const isOnline = navigator.onLine && token;
+    let confirmation: SaveConfirmation = "synced";
     if (isOnline) {
       try {
         if (inputType === "foto" && capturedMedia) {
@@ -280,6 +294,7 @@ export default function App() {
         setStatus(finalizedRecord, "pendiente_sync");
         attachPendingDrivePlaceholder(finalizedRecord);
         setNetworkError("Guardado local; se sincronizara despues");
+        confirmation = "pending";
         saveQueueToLocal([
           ...pendingSyncQueue,
           { record: finalizedRecord, type: activeRecordType, localMediaData: capturedMedia, localMediaMime: mediaMimeType },
@@ -289,6 +304,7 @@ export default function App() {
       setStatus(finalizedRecord, "pendiente_sync");
       attachPendingDrivePlaceholder(finalizedRecord);
       setNetworkError("Sin conexion; guardado en cola local");
+      confirmation = "pending";
       saveQueueToLocal([
         ...pendingSyncQueue,
         { record: finalizedRecord, type: activeRecordType, localMediaData: capturedMedia, localMediaMime: mediaMimeType },
@@ -302,6 +318,7 @@ export default function App() {
     setActiveRecord(null);
     setActiveRecordType(null);
     setIsProcessing(false);
+    setSaveConfirmation(confirmation);
     setActiveTab("inicio");
   };
 
@@ -363,7 +380,7 @@ export default function App() {
 
         const id = item.record.ID_gasto || item.record.ID_pago || item.record.ID_viaje;
         const activityIndex = updatedActivities.findIndex((act) => (act.ID_gasto || act.ID_pago || act.ID_viaje) === id);
-        if (activityIndex > -1) updatedActivities[activityIndex] = { ...item.record, _type: item.type, Estado_validación: "validado" };
+        if (activityIndex > -1) updatedActivities[activityIndex] = { ...item.record, _type: item.type, ["Estado_validaci\u00f3n"]: "validado" };
       } catch (err) {
         console.error("Could not sync item:", item, err);
         remainingQueue.push(item);
@@ -387,6 +404,7 @@ export default function App() {
     if (confirm("Descartar este registro?")) {
       setActiveRecord(null);
       setActiveRecordType(null);
+      setSaveConfirmation(null);
       setActiveTab("inicio");
     }
   };
@@ -394,16 +412,14 @@ export default function App() {
   const filteredActivities = useMemo(
     () =>
       recentActivities.filter((item) => {
-        if (filterType !== "todos" && item._type !== filterType) return false;
-        const status = getStatus(item);
-        if (filterStatus !== "todos" && status !== filterStatus) return false;
+        if (!isThisWeek(item)) return false;
         if (!searchQuery.trim()) return true;
         const q = searchQuery.toLowerCase();
         return [item.Notas, item.Observaciones, item.Cliente, getTruck(item), item.Chofer, getCategory(item), item.Material, item.Origen, item.Destino]
           .filter(Boolean)
           .some((value) => text(value).toLowerCase().includes(q));
       }),
-    [filterStatus, filterType, recentActivities, searchQuery]
+    [recentActivities, searchQuery]
   );
 
   if (needsAuth) {
@@ -471,6 +487,29 @@ export default function App() {
 
         <main className="flex-1 space-y-7 px-5 py-6">
           {activeTab === "inicio" && (
+            saveConfirmation ? (
+              <section className="bravo-confirmation">
+                <div className="bravo-confirmation-mark">
+                  <CheckCircle2 className="h-7 w-7" />
+                </div>
+                <h1>Registro guardado</h1>
+                <p>{saveConfirmation === "synced" ? "Se sincroniz\u00f3 correctamente" : "Guardado pendiente de sincronizaci\u00f3n"}</p>
+                <div className="mt-7 grid gap-3">
+                  <button className="bravo-primary-button" onClick={() => setSaveConfirmation(null)}>
+                    Nuevo registro
+                  </button>
+                  <button
+                    className="bravo-secondary-button"
+                    onClick={() => {
+                      setSaveConfirmation(null);
+                      setActiveTab("historial");
+                    }}
+                  >
+                    Ver historial
+                  </button>
+                </div>
+              </section>
+            ) : (
             <>
               <section>
                 <h1 className="text-[34px] font-semibold leading-[1.05]">Captura</h1>
@@ -486,7 +525,7 @@ export default function App() {
                       setInputText(event.target.value);
                       setInputType("texto");
                     }}
-                    placeholder="Cuéntame o captura lo que pasó..."
+                    placeholder="CuÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â©ntame o captura lo que pasÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â³..."
                     rows={4}
                     className="bravo-chat-input"
                   />
@@ -514,7 +553,7 @@ export default function App() {
                       }}
                     >
                       <Camera className="h-5 w-5" />
-                      <span>Cámara</span>
+                      <span>CÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¡mara</span>
                     </button>
                   </div>
 
@@ -565,7 +604,7 @@ export default function App() {
                     </button>
                   )}
                 </div>
-                <ActivityList items={recentActivities.slice(0, 4)} onSelect={setSelectedDetailItem} empty="Los registros recientes aparecerán aquí." />
+                <ActivityList items={recentActivities.slice(0, 4)} onSelect={setSelectedDetailItem} empty="Los registros recientes aparecerÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¡n aquÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â­." />
               </section>
 
               <SyncNotification
@@ -577,6 +616,7 @@ export default function App() {
                 pendingQueue={pendingSyncQueue}
               />
             </>
+            )
           )}
 
           {activeTab === "captura" && activeRecord && activeRecordType && (
@@ -604,33 +644,15 @@ export default function App() {
 
           {activeTab === "historial" && (
             <section className="space-y-5">
-              <div>
+              <div className="flex items-start justify-between gap-4">
                 <h1 className="text-[30px] font-semibold leading-tight">Historial</h1>
-                <p className="mt-2 text-[15px] text-[var(--bravo-muted)]">Lista separada de registros guardados.</p>
+                <span className="bravo-week-chip">Esta semana</span>
               </div>
               <div className="relative">
                 <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--bravo-muted)]" />
-                <input className="bravo-search" value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} placeholder="Buscar cliente, camion o nota" />
+                <input className="bravo-search" value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} placeholder="Buscar" />
               </div>
-              <div className="bravo-filter-row">
-                {(["todos", "gasto", "pago", "viaje"] as FilterType[]).map((type) => (
-                  <button key={type} className={filterType === type ? "is-active" : ""} onClick={() => setFilterType(type)}>
-                    {type === "todos" ? "Todos" : recordLabel(type)}
-                  </button>
-                ))}
-              </div>
-              <div className="bravo-filter-row compact">
-                {[
-                  { value: "todos", label: "Todos" },
-                  { value: "pendiente_sync", label: "Pendientes" },
-                  { value: "validado", label: "Sincronizados" },
-                ].map((item) => (
-                  <button key={item.value} className={filterStatus === item.value ? "is-active" : ""} onClick={() => setFilterStatus(item.value as FilterStatus)}>
-                    {item.label}
-                  </button>
-                ))}
-              </div>
-              <ActivityList items={filteredActivities} onSelect={setSelectedDetailItem} empty="No hay registros con esos filtros." />
+              <ActivityList items={filteredActivities} onSelect={setSelectedDetailItem} empty="No hay registros esta semana." />
             </section>
           )}
         </main>
@@ -657,7 +679,7 @@ export default function App() {
                   <span>{recordLabel(selectedDetailItem._type)}</span>
                 </div>
                 <h2 className="mt-2 text-xl font-semibold">{activityTitle(selectedDetailItem)}</h2>
-                <p className="mt-1 text-sm text-[var(--bravo-muted)]">{selectedDetailItem.Fecha} · {text(selectedDetailItem.Hora).slice(0, 5)}</p>
+                <p className="mt-1 text-sm text-[var(--bravo-muted)]">{selectedDetailItem.Fecha} ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â· {text(selectedDetailItem.Hora).slice(0, 5)}</p>
               </div>
               <span className={`bravo-status ${getStatus(selectedDetailItem) === "pendiente_sync" ? "pending" : "synced"}`}>
                 {getStatus(selectedDetailItem) === "pendiente_sync" ? "Pendiente" : "Sincronizado"}
@@ -705,7 +727,7 @@ function ActivityList({ items, onSelect, empty }: { items: any[]; onSelect: (ite
                 <span className="truncate text-sm font-semibold">{activityTitle(item)}</span>
                 <span className={`bravo-status-dot ${status === "pendiente_sync" ? "pending" : "synced"}`} />
               </span>
-              <span className="mt-1 block truncate text-xs text-[var(--bravo-muted)]">{recordLabel(item._type)} · {activityMeta(item)}</span>
+              <span className="mt-1 block truncate text-xs text-[var(--bravo-muted)]">{recordLabel(item._type)} ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â· {activityMeta(item)}</span>
             </span>
             <span className="text-right">
               <span className="block text-sm font-semibold tabular-nums">${money(activityAmount(item))}</span>

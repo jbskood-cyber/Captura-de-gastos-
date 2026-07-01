@@ -31,9 +31,15 @@ const get = (data: any, ...keys: string[]) => {
   return "";
 };
 
-const numberFrom = (value: unknown, fallback = 0) => {
+const numberFrom = (value: unknown) => {
+  if (value === undefined || value === null || value === "") return "";
   const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : fallback;
+  return Number.isFinite(parsed) ? parsed : "";
+};
+
+const toNumber = (value: unknown) => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : 0;
 };
 
 const confidenceCopy: Record<IAConfidence, string> = {
@@ -58,7 +64,6 @@ export default function RecordForm({
     const now = new Date();
     const currentDate = now.toISOString().split("T")[0];
     const currentTime = now.toTimeString().split(" ")[0];
-    const randomId = Math.floor(10000 + Math.random() * 90000);
     const base = {
       Fecha: get(initialData, "Fecha") || currentDate,
       Hora: get(initialData, "Hora") || currentTime,
@@ -70,13 +75,13 @@ export default function RecordForm({
 
     if (type === "gasto") {
       setFormData({
-        ID_gasto: get(initialData, "ID_gasto") || `G-${randomId}`,
-        Tipo_entrada: get(initialData, "Tipo_entrada") || "texto",
-        Categoría: get(initialData, "Categoría", "Categoria", "CategorÃ­a") || "Diésel",
+        ID_gasto: get(initialData, "ID_gasto"),
+        Tipo_entrada: get(initialData, "Tipo_entrada"),
+        Categoría: get(initialData, "Categoría", "Categoria", "CategorÃ­a"),
         Subcategoría: get(initialData, "Subcategoría", "Subcategoria", "SubcategorÃ­a"),
         Monto_MXN: numberFrom(get(initialData, "Monto_MXN")),
-        Método_pago: get(initialData, "Método_pago", "Metodo_pago", "MÃ©todo_pago") || "Efectivo",
-        Camión: get(initialData, "Camión", "Camion", "CamiÃ³n") || camiones[0] || "",
+        Método_pago: get(initialData, "Método_pago", "Metodo_pago", "MÃ©todo_pago"),
+        Camión: get(initialData, "Camión", "Camion", "CamiÃ³n"),
         Chofer: get(initialData, "Chofer"),
         Cliente: get(initialData, "Cliente"),
         Viaje_ID: get(initialData, "Viaje_ID"),
@@ -90,13 +95,13 @@ export default function RecordForm({
 
     if (type === "pago") {
       setFormData({
-        ID_pago: get(initialData, "ID_pago") || `P-${randomId}`,
-        Cliente: get(initialData, "Cliente") || clientes[0] || "",
+        ID_pago: get(initialData, "ID_pago"),
+        Cliente: get(initialData, "Cliente"),
         Monto_MXN: numberFrom(get(initialData, "Monto_MXN")),
-        Método_pago: get(initialData, "Método_pago", "Metodo_pago", "MÃ©todo_pago") || "Transferencia",
+        Método_pago: get(initialData, "Método_pago", "Metodo_pago", "MÃ©todo_pago"),
         Viaje_ID: get(initialData, "Viaje_ID"),
         Saldo_restante_MXN: numberFrom(get(initialData, "Saldo_restante_MXN")),
-        Estado_pago: get(initialData, "Estado_pago") || "liquidado",
+        Estado_pago: get(initialData, "Estado_pago"),
         URL_evidencia_Drive: get(initialData, "URL_evidencia_Drive"),
         ...base,
       });
@@ -104,19 +109,19 @@ export default function RecordForm({
 
     if (type === "viaje") {
       setFormData({
-        ID_viaje: get(initialData, "ID_viaje") || `V-${randomId}`,
-        Cliente: get(initialData, "Cliente") || clientes[0] || "",
+        ID_viaje: get(initialData, "ID_viaje"),
+        Cliente: get(initialData, "Cliente"),
         Origen: get(initialData, "Origen"),
         Destino: get(initialData, "Destino"),
-        Material: get(initialData, "Material") || "Arena",
-        Metros_cubicos: numberFrom(get(initialData, "Metros_cubicos"), 7),
+        Material: get(initialData, "Material"),
+        Metros_cubicos: numberFrom(get(initialData, "Metros_cubicos")),
         Kilómetros: numberFrom(get(initialData, "Kilómetros", "Kilometros", "KilÃ³metros")),
-        Camión: get(initialData, "Camión", "Camion", "CamiÃ³n") || camiones[0] || "",
+        Camión: get(initialData, "Camión", "Camion", "CamiÃ³n"),
         Chofer: get(initialData, "Chofer"),
         Precio_cobrado_MXN: numberFrom(get(initialData, "Precio_cobrado_MXN")),
         Costo_estimado_MXN: numberFrom(get(initialData, "Costo_estimado_MXN")),
         Utilidad_estimada_MXN: numberFrom(get(initialData, "Utilidad_estimada_MXN")),
-        Estado_pago: get(initialData, "Estado_pago") || "pendiente",
+        Estado_pago: get(initialData, "Estado_pago"),
         URL_evidencia_carga: get(initialData, "URL_evidencia_carga"),
         URL_evidencia_descarga: get(initialData, "URL_evidencia_descarga"),
         Observaciones: get(initialData, "Observaciones", "Notas"),
@@ -127,7 +132,8 @@ export default function RecordForm({
 
   useEffect(() => {
     if (type !== "viaje") return;
-    const utilidad = Math.max(0, numberFrom(formData.Precio_cobrado_MXN) - numberFrom(formData.Costo_estimado_MXN));
+    if (formData.Precio_cobrado_MXN === "" && formData.Costo_estimado_MXN === "") return;
+    const utilidad = Math.max(0, toNumber(formData.Precio_cobrado_MXN) - toNumber(formData.Costo_estimado_MXN));
     if (formData.Utilidad_estimada_MXN !== utilidad) {
       setFormData((prev: any) => ({ ...prev, Utilidad_estimada_MXN: utilidad }));
     }
@@ -145,7 +151,7 @@ export default function RecordForm({
 
   const handleNumberChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = event.target;
-    setFormData((prev: any) => ({ ...prev, [name]: Number(value) || 0 }));
+    setFormData((prev: any) => ({ ...prev, [name]: value === "" ? "" : Number(value) }));
   };
 
   const handleSubmit = (event: React.FormEvent) => {
@@ -165,11 +171,13 @@ export default function RecordForm({
           <ArrowLeft className="h-4 w-4" />
           <span>Volver</span>
         </button>
-        <span className="bravo-id-chip">{formData.ID_gasto || formData.ID_pago || formData.ID_viaje}</span>
+        {(formData.ID_gasto || formData.ID_pago || formData.ID_viaje) && (
+          <span className="bravo-id-chip">{formData.ID_gasto || formData.ID_pago || formData.ID_viaje}</span>
+        )}
       </div>
 
       <section>
-        <div className="flex items-center gap-2 text-[var(--bravo-blue)]">
+        <div className="flex items-center gap-2 text-[var(--bravo-muted)]">
           {type === "gasto" && <Wallet className="h-5 w-5" />}
           {type === "pago" && <Landmark className="h-5 w-5" />}
           {type === "viaje" && <Truck className="h-5 w-5" />}
@@ -257,10 +265,12 @@ export default function RecordForm({
                 <TextInput label="Chofer" name="Chofer" value={formData.Chofer} onChange={handleChange} />
                 <SelectInput label="Estado de pago" name="Estado_pago" value={formData.Estado_pago} onChange={handleChange} options={["pendiente", "parcial", "pagado"]} />
                 <MoneyInput label="Costo estimado" name="Costo_estimado_MXN" value={formData.Costo_estimado_MXN} onChange={handleNumberChange} />
-                <div className="rounded-2xl bg-slate-50 p-4">
-                  <span className="block text-xs font-medium text-[var(--bravo-muted)]">Utilidad estimada</span>
-                  <span className="mt-1 block text-lg font-semibold tabular-nums">${Number(formData.Utilidad_estimada_MXN || 0).toLocaleString("es-MX")}</span>
-                </div>
+                {formData.Utilidad_estimada_MXN !== "" && (
+                  <div className="rounded-2xl border border-[var(--bravo-border)] bg-white/[0.03] p-4">
+                    <span className="block text-xs font-medium text-[var(--bravo-muted)]">Utilidad estimada</span>
+                    <span className="mt-1 block text-lg font-semibold tabular-nums">${Number(formData.Utilidad_estimada_MXN || 0).toLocaleString("es-MX")}</span>
+                  </div>
+                )}
               </>
             )}
           </div>
@@ -315,7 +325,7 @@ function MoneyInput(props: {
   return (
     <FieldShell label={props.label}>
       <div className="relative">
-        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-semibold text-slate-400">$</span>
+        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-semibold text-[var(--bravo-muted)]">$</span>
         <input className="bravo-field pl-8 tabular-nums" name={props.name} type="number" value={props.value || ""} onChange={props.onChange} required={props.required} />
       </div>
     </FieldShell>
@@ -352,7 +362,7 @@ function NoteInput(props: {
 }) {
   return (
     <FieldShell label="Nota">
-      <textarea className="bravo-field min-h-[88px] resize-none" name={props.name} value={props.value || ""} onChange={props.onChange} placeholder="Agrega una nota breve si hace falta." />
+      <textarea className="bravo-field min-h-[88px] resize-none py-3" name={props.name} value={props.value || ""} onChange={props.onChange} placeholder="Agrega una nota breve si hace falta." />
     </FieldShell>
   );
 }

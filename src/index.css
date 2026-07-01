@@ -15,10 +15,10 @@
   --bravo-ink: #f4f6f8;
   --bravo-muted: #8d96a3;
   --bravo-border: rgba(255, 255, 255, 0.08);
-  --bravo-blue: #8ba7ff;
-  --bravo-green: #8bd9ad;
-  --bravo-amber: #d8b26a;
-  --bravo-red: #e18686;
+  --bravo-blue: #e6e8ec;
+  --bravo-green: #d7dbe1;
+  --bravo-amber: #b7bec8;
+  --bravo-red: #b7bec8;
   --bravo-radius-md: 18px;
   --bravo-radius-lg: 24px;
   --bravo-shadow: 0 18px 42px rgba(0, 0, 0, 0.34);
@@ -152,9 +152,9 @@ button {
 .bravo-textarea:focus,
 .bravo-field:focus,
 .bravo-search:focus {
-  border-color: rgba(139, 167, 255, 0.42);
+  border-color: rgba(255, 255, 255, 0.22);
   background: rgba(255, 255, 255, 0.045);
-  box-shadow: 0 0 0 4px rgba(139, 167, 255, 0.08);
+  box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.055);
 }
 
 .bravo-capture-button {
@@ -173,8 +173,8 @@ button {
 }
 
 .bravo-capture-button.is-active {
-  border-color: rgba(139, 167, 255, 0.42);
-  background: rgba(139, 167, 255, 0.11);
+  border-color: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.09);
 }
 
 .bravo-write-button {
@@ -278,13 +278,13 @@ button {
 }
 
 .bravo-status.synced {
-  background: rgba(139, 217, 173, 0.1);
-  color: var(--bravo-green);
+  background: rgba(255, 255, 255, 0.08);
+  color: #d7dbe1;
 }
 
 .bravo-status.pending {
-  background: rgba(216, 178, 106, 0.12);
-  color: var(--bravo-amber);
+  background: rgba(255, 255, 255, 0.055);
+  color: #aeb6c1;
 }
 
 .bravo-status-dot {
@@ -295,11 +295,11 @@ button {
 }
 
 .bravo-status-dot.synced {
-  background: var(--bravo-green);
+  background: #d7dbe1;
 }
 
 .bravo-status-dot.pending {
-  background: var(--bravo-amber);
+  background: #8f98a5;
 }
 
 .bravo-nav-item {
@@ -346,18 +346,63 @@ button {
 }
 
 .bravo-confidence.alta {
-  background: rgba(139, 217, 173, 0.1);
-  color: var(--bravo-green);
+  background: rgba(255, 255, 255, 0.08);
+  color: #d7dbe1;
 }
 
 .bravo-confidence.media {
-  background: rgba(216, 178, 106, 0.12);
-  color: var(--bravo-amber);
+  background: rgba(255, 255, 255, 0.06);
+  color: #b7bec8;
 }
 
 .bravo-confidence.baja {
-  background: rgba(225, 134, 134, 0.1);
-  color: var(--bravo-red);
+  background: rgba(255, 255, 255, 0.05);
+  color: #aeb6c1;
+}
+
+.bravo-confirmation {
+  display: grid;
+  min-height: calc(100vh - 220px);
+  align-content: center;
+  text-align: center;
+}
+
+.bravo-confirmation-mark {
+  display: grid;
+  width: 64px;
+  height: 64px;
+  place-items: center;
+  margin: 0 auto 22px;
+  border: 1px solid var(--bravo-border);
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.07);
+  color: var(--bravo-ink);
+}
+
+.bravo-confirmation h1 {
+  font-size: 30px;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.bravo-confirmation p {
+  margin-top: 10px;
+  color: var(--bravo-muted);
+  font-size: 15px;
+}
+
+.bravo-week-chip {
+  display: inline-flex;
+  min-height: 32px;
+  align-items: center;
+  border: 1px solid var(--bravo-border);
+  border-radius: 999px;
+  padding: 0 12px;
+  color: #c5cad2;
+  background: rgba(255, 255, 255, 0.045);
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
 }
 
 .bravo-disclosure {
@@ -372,30 +417,6 @@ button {
   color: var(--bravo-ink);
   font-size: 14px;
   font-weight: 800;
-}
-
-.bravo-filter-row {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 6px;
-}
-
-.bravo-filter-row.compact {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-
-.bravo-filter-row button {
-  min-height: 38px;
-  border: 1px solid var(--bravo-border);
-  border-radius: 14px;
-  color: var(--bravo-muted);
-  font-size: 12px;
-  font-weight: 800;
-}
-
-.bravo-filter-row button.is-active {
-  background: rgba(255, 255, 255, 0.08);
-  color: var(--bravo-ink);
 }
 
 .bravo-detail-list {
