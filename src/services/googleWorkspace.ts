@@ -5,13 +5,16 @@ const FALLBACK_CAMIONES: string[] = [];
 
 const FALLBACK_CLIENTES: string[] = [];
 
+const authHeaders = (accessToken: string | null) =>
+  accessToken ? { Authorization: `Bearer ${accessToken}` } : {};
+
 /**
  * Loads Camiones dropdown list from server proxy
  */
-export async function loadCamiones(accessToken: string): Promise<string[]> {
+export async function loadCamiones(accessToken: string | null): Promise<string[]> {
   try {
     const response = await fetch("/api/sheets/dropdowns", {
-      headers: { Authorization: `Bearer ${accessToken}` },
+      headers: authHeaders(accessToken),
     });
     if (!response.ok) throw new Error("Server dropdowns fetch failed");
     const data = await response.json();
@@ -25,10 +28,10 @@ export async function loadCamiones(accessToken: string): Promise<string[]> {
 /**
  * Loads Clientes dropdown list from server proxy
  */
-export async function loadClientes(accessToken: string): Promise<string[]> {
+export async function loadClientes(accessToken: string | null): Promise<string[]> {
   try {
     const response = await fetch("/api/sheets/dropdowns", {
-      headers: { Authorization: `Bearer ${accessToken}` },
+      headers: authHeaders(accessToken),
     });
     if (!response.ok) throw new Error("Server dropdowns fetch failed");
     const data = await response.json();
@@ -42,9 +45,9 @@ export async function loadClientes(accessToken: string): Promise<string[]> {
 /**
  * Loads all activities (Gastos, Pagos, Viajes) from Google Sheets via server proxy
  */
-export async function loadSheetsActivities(accessToken: string): Promise<any[]> {
+export async function loadSheetsActivities(accessToken: string | null): Promise<any[]> {
   const response = await fetch("/api/sheets/activities", {
-    headers: { Authorization: `Bearer ${accessToken}` },
+    headers: authHeaders(accessToken),
   });
   if (!response.ok) {
     throw new Error(`Server activities fetch failed: ${response.statusText}`);
@@ -57,7 +60,7 @@ export async function loadSheetsActivities(accessToken: string): Promise<any[]> 
  * Logs an action to the Auditoría sheet via server proxy
  */
 export async function writeAuditoria(
-  accessToken: string,
+  accessToken: string | null,
   userEmail: string,
   accion: string,
   entidad: string = "",
@@ -71,7 +74,7 @@ export async function writeAuditoria(
     const response = await fetch("/api/sheets/auditoria", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${accessToken}`,
+        ...authHeaders(accessToken),
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
@@ -96,11 +99,11 @@ export async function writeAuditoria(
 /**
  * Save Gasto record to Google Sheets via server proxy
  */
-export async function saveGastoToSheet(accessToken: string, gasto: Gasto): Promise<void> {
+export async function saveGastoToSheet(accessToken: string | null, gasto: Gasto): Promise<void> {
   const response = await fetch("/api/sheets/gasto", {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${accessToken}`,
+      ...authHeaders(accessToken),
       "Content-Type": "application/json",
     },
     body: JSON.stringify({ gasto }),
@@ -115,11 +118,11 @@ export async function saveGastoToSheet(accessToken: string, gasto: Gasto): Promi
 /**
  * Save Pago record to Google Sheets via server proxy
  */
-export async function savePagoToSheet(accessToken: string, pago: Pago): Promise<void> {
+export async function savePagoToSheet(accessToken: string | null, pago: Pago): Promise<void> {
   const response = await fetch("/api/sheets/pago", {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${accessToken}`,
+      ...authHeaders(accessToken),
       "Content-Type": "application/json",
     },
     body: JSON.stringify({ pago }),
@@ -134,11 +137,11 @@ export async function savePagoToSheet(accessToken: string, pago: Pago): Promise<
 /**
  * Save Viaje record to Google Sheets via server proxy
  */
-export async function saveViajeToSheet(accessToken: string, viaje: Viaje): Promise<void> {
+export async function saveViajeToSheet(accessToken: string | null, viaje: Viaje): Promise<void> {
   const response = await fetch("/api/sheets/viaje", {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${accessToken}`,
+      ...authHeaders(accessToken),
       "Content-Type": "application/json",
     },
     body: JSON.stringify({ viaje }),
@@ -154,7 +157,7 @@ export async function saveViajeToSheet(accessToken: string, viaje: Viaje): Promi
  * Upload receipt photo to Google Drive via server proxy
  */
 export async function uploadFileToDrive(
-  accessToken: string,
+  accessToken: string | null,
   fileBlob: Blob,
   fileName: string,
   mimeType: string
@@ -170,7 +173,7 @@ export async function uploadFileToDrive(
   const response = await fetch("/api/drive/upload", {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${accessToken}`,
+      ...authHeaders(accessToken),
       "Content-Type": "application/json",
     },
     body: JSON.stringify({ base64File, fileName, mimeType }),
@@ -189,7 +192,7 @@ export async function uploadFileToDrive(
  * Update evidence URL of an existing Google Sheet row matching its ID
  */
 export async function updateEvidenceInSheet(
-  accessToken: string,
+  accessToken: string | null,
   id: string,
   type: string,
   evidenceUrl: string,
@@ -198,7 +201,7 @@ export async function updateEvidenceInSheet(
   const response = await fetch("/api/sheets/update-evidence", {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${accessToken}`,
+      ...authHeaders(accessToken),
       "Content-Type": "application/json",
     },
     body: JSON.stringify({ id, type, evidenceUrl, evidenceType }),
@@ -207,6 +210,28 @@ export async function updateEvidenceInSheet(
   if (!response.ok) {
     const txt = await response.text();
     throw new Error(`Error actualizando evidencia en Sheets: ${response.statusText} (${txt})`);
+  }
+}
+
+export async function approveRecordsInSheet(
+  accessToken: string | null,
+  records: Array<{ id: string; type: string }>,
+  approvedBy: string,
+  status: "aprobado" | "rechazado" = "aprobado",
+  notes: string = ""
+): Promise<void> {
+  const response = await fetch("/api/sheets/approve", {
+    method: "POST",
+    headers: {
+      ...authHeaders(accessToken),
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ records, approvedBy, status, notes }),
+  });
+
+  if (!response.ok) {
+    const txt = await response.text();
+    throw new Error(`Error aprobando registros en Sheets: ${response.statusText} (${txt})`);
   }
 }
 

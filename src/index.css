@@ -405,6 +405,31 @@ button {
   white-space: nowrap;
 }
 
+.bravo-filter-chip,
+.bravo-option-row {
+  min-height: 40px;
+  border: 1px solid var(--bravo-border);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.035);
+  color: var(--bravo-muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.bravo-filter-chip.is-active,
+.bravo-option-row.is-active {
+  background: rgba(255, 255, 255, 0.095);
+  color: var(--bravo-ink);
+}
+
+.bravo-option-row {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 0 14px;
+  text-align: left;
+}
+
 .bravo-disclosure {
   display: flex;
   min-height: 48px;

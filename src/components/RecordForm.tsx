@@ -158,8 +158,8 @@ export default function RecordForm({
     event.preventDefault();
     onSave({
       ...formData,
-      Estado_validación: "validado" as ValidationState,
-      Estado_validacion: "validado" as ValidationState,
+      Estado_validación: "pendiente_aprobacion" as ValidationState,
+      Estado_validacion: "pendiente_aprobacion" as ValidationState,
       Updated_at: new Date().toISOString(),
     });
   };
@@ -341,16 +341,22 @@ function SelectInput(props: {
   placeholder?: string;
   required?: boolean;
 }) {
+  const emitChange = (value: string) => {
+    props.onChange({ target: { name: props.name, value } } as React.ChangeEvent<HTMLSelectElement>);
+  };
+
   return (
     <FieldShell label={props.label}>
-      <select className="bravo-field" name={props.name} value={props.value || ""} onChange={props.onChange} required={props.required}>
-        <option value="">{props.placeholder || "Selecciona"}</option>
+      <div className="grid gap-2">
+        <button type="button" className={`bravo-option-row ${!props.value ? "is-active" : ""}`} onClick={() => emitChange("")}>
+          {props.placeholder || "Selecciona"}
+        </button>
         {props.options.map((option) => (
-          <option key={option} value={option}>
+          <button type="button" key={option} className={`bravo-option-row ${props.value === option ? "is-active" : ""}`} onClick={() => emitChange(option)}>
             {option}
-          </option>
+          </button>
         ))}
-      </select>
+      </div>
     </FieldShell>
   );
 }

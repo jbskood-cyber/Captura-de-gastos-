@@ -8,6 +8,10 @@ dotenv.config();
 
 const app = express();
 const PORT = 3000;
+const AUTH_MODE = process.env.AUTH_MODE || "oauth";
+const FAMILY_ACCESS_CODE = process.env.KARGO_FAMILY_ACCESS_CODE || "";
+const KARGO_BRIDGE_SECRET = process.env.KARGO_BRIDGE_SECRET || "";
+const KARGO_APPS_SCRIPT_URL = process.env.KARGO_APPS_SCRIPT_URL || "";
 
 // Increase payload limits for base64 images and audio
 app.use(express.json({ limit: "50mb" }));
@@ -19,12 +23,71 @@ function getGeminiClient() {
   if (!aiClient) {
     const key = process.env.GEMINI_API_KEY;
     if (!key) {
-      console.warn("⚠️ Warning: GEMINI_API_KEY is not defined in the environment variables!");
+      console.warn("Warning: GEMINI_API_KEY is not defined in the environment variables!");
     }
     aiClient = new GoogleGenAI({ apiKey: key || "" });
   }
   return aiClient;
 }
+
+function hasBridgeConfig() {
+  return Boolean(KARGO_APPS_SCRIPT_URL && KARGO_BRIDGE_SECRET);
+}
+
+async function callKargoBridge(action: string, payload: Record<string, unknown>) {
+  if (!hasBridgeConfig()) {
+    throw new Error("Kargo Bridge no esta configurado.");
+  }
+
+  const response = await fetch(KARGO_APPS_SCRIPT_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      secret: KARGO_BRIDGE_SECRET,
+      action,
+      payload,
+    }),
+  });
+
+  const text = await response.text();
+  let data: any = {};
+  try {
+    data = text ? JSON.parse(text) : {};
+  } catch {
+    data = { raw: text };
+  }
+
+  if (!response.ok || data?.ok === false || data?.success === false) {
+    throw new Error(`Kargo Bridge ${action} failed: ${response.status} ${text}`);
+  }
+
+  return data;
+}
+
+app.get("/api/runtime-config", (_req: express.Request, res: express.Response) => {
+  res.json({
+    authMode: AUTH_MODE,
+    familyMode: AUTH_MODE === "family",
+    bridgeConfigured: hasBridgeConfig(),
+  });
+});
+
+app.post("/api/family/verify-code", (req: express.Request, res: express.Response) => {
+  if (AUTH_MODE !== "family") {
+    return res.json({ ok: true });
+  }
+
+  const { code } = req.body || {};
+  if (!FAMILY_ACCESS_CODE) {
+    return res.status(500).json({ error: "KARGO_FAMILY_ACCESS_CODE no esta configurado." });
+  }
+
+  if (String(code || "").trim() !== FAMILY_ACCESS_CODE) {
+    return res.status(401).json({ error: "Codigo familiar incorrecto." });
+  }
+
+  return res.json({ ok: true });
+});
 
 // AI Endpoint to parse text, image, or audio input
 app.post("/api/process-input", async (req: express.Request, res: express.Response) => {
@@ -34,7 +97,7 @@ app.post("/api/process-input", async (req: express.Request, res: express.Respons
     const ai = getGeminiClient();
     if (!process.env.GEMINI_API_KEY) {
       return res.status(500).json({
-        error: "Falta la API Key de Gemini en el servidor. Configúrala en el panel de secretos.",
+        error: "Falta la API Key de Gemini en el servidor. Configurala en el panel de secretos.",
       });
     }
 
@@ -43,62 +106,62 @@ app.post("/api/process-input", async (req: express.Request, res: express.Respons
 
     // System prompt instructing Gemini
     const systemPrompt = `
-Eres la Inteligencia Artificial de "Transporte Bravo", un negocio familiar de camiones de carga de materiales en México.
-Tu tarea es analizar la entrada provista (que puede ser texto escrito por el usuario, una imagen/foto de un recibo o evidencia, o un archivo de audio grabado por voz) y estructurar los datos en un formato JSON limpio y preciso de acuerdo con la clasificación solicitada.
+Eres la Inteligencia Artificial de "Kargo", una app familiar para registrar gastos, pagos y viajes de camiones de carga en Mexico.
+Tu tarea es analizar la entrada provista (texto, foto o audio) y estructurar los datos en un formato JSON limpio y preciso de acuerdo con la clasificacion solicitada.
 
-Categorías y sus respectivos esquemas de salida:
+Categorias y sus respectivos esquemas de salida:
 
 1. Gasto (gasto): Registrar compras de combustible, refacciones, alimentos, casetas, sueldos de choferes, etc.
    Campos JSON esperados:
-   - categoria: Tipo de gasto (ej. "Diésel", "Refacciones", "Casetas", "Sueldo Chofer", "Comida", "Otro"). Debe coincidir razonablemente con estos valores.
+   - categoria: Tipo de gasto (ej. "Diesel", "Refacciones", "Casetas", "Sueldo Chofer", "Comida", "Otro"). Debe coincidir razonablemente con estos valores.
    - subcategoria: Detalle del gasto (ej. "Llantas", "Filtro", "Peaje", "Almuerzo", etc.).
-   - monto_mxn: Monto total en pesos mexicanos (número).
-   - metodo_pago: Método utilizado (ej. "Efectivo", "Transferencia", "Tarjeta").
-   - camion: El camión asociado. Revisa la lista de camiones válidos provista abajo para ver si coincide alguno.
+   - monto_mxn: Monto total en pesos mexicanos (numero).
+   - metodo_pago: Metodo utilizado (ej. "Efectivo", "Transferencia", "Tarjeta").
+   - camion: El camion asociado. Revisa la lista de camiones validos provista abajo para ver si coincide alguno.
    - chofer: Nombre del chofer asociado (si se menciona).
    - cliente: Cliente asociado (si se menciona).
    - proveedor: Negocio donde se hizo el gasto (ej. "Gasolinera Pemex", "Refaccionaria El Rojo").
-   - notas: Detalles adicionales o aclaraciones extraídas de la entrada.
+   - notas: Detalles adicionales o aclaraciones extraidas de la entrada.
 
-2. Pago (pago): Abono o liquidación que hace un cliente por un viaje.
+2. Pago (pago): Abono o liquidacion que hace un cliente por un viaje.
    Campos JSON esperados:
-   - cliente: Nombre del cliente. Intenta que coincida con la lista de clientes válidos.
-   - monto_mxn: Monto recibido en pesos mexicanos (número).
-   - metodo_pago: Método utilizado (ej. "Efectivo", "Transferencia", "Tarjeta").
+   - cliente: Nombre del cliente. Intenta que coincida con la lista de clientes validos.
+   - monto_mxn: Monto recibido en pesos mexicanos (numero).
+   - metodo_pago: Metodo utilizado (ej. "Efectivo", "Transferencia", "Tarjeta").
    - viaje_id: ID del viaje si se menciona (ej. V-1002).
-   - saldo_restante_mxn: Saldo que resta por pagar (si se menciona, número, o nulo si no se menciona).
+   - saldo_restante_mxn: Saldo que resta por pagar (si se menciona, numero, o nulo si no se menciona).
    - estado_pago: "pendiente", "parcial" o "liquidado" (basado en el contexto).
    - notas: Notas adicionales.
 
-3. Viaje (viaje): Registro de un flete o viaje realizado por un camión.
+3. Viaje (viaje): Registro de un flete o viaje realizado por un camion.
    Campos JSON esperados:
-   - cliente: Nombre del cliente. Intenta que coincida con la lista de clientes válidos.
+   - cliente: Nombre del cliente. Intenta que coincida con la lista de clientes validos.
    - origen: Lugar donde carga el material.
    - destino: Lugar de entrega.
    - material: Tipo de material (ej. "Arena", "Grava", "Asfalto", "Piedra", "Tierra").
-   - metros_cubicos: Volumen en metros cúbicos (número, si se menciona).
-   - kilometros: Distancia recorrida (número, si se menciona).
-   - camion: Camión que hizo el viaje. Revisa la lista de camiones válidos abajo.
-   - chofer: Chofer que manejó.
-   - precio_cobrado_mxn: Cuánto se le cobra al cliente por el flete (número).
-   - costo_estimado_mxn: Costo del diésel y casetas estimado para este viaje (si se menciona, número).
+   - metros_cubicos: Volumen en metros cubicos (numero, si se menciona).
+   - kilometros: Distancia recorrida (numero, si se menciona).
+   - camion: Camion que hizo el viaje. Revisa la lista de camiones validos abajo.
+   - chofer: Chofer que manejo.
+   - precio_cobrado_mxn: Cuanto se le cobra al cliente por el flete (numero).
+   - costo_estimado_mxn: Costo del diesel y casetas estimado para este viaje (si se menciona, numero).
    - observaciones: Notas u observaciones adicionales.
 
 LISTA DE CAMIONES REGISTRADOS EN EL SISTEMA:
-${camiones && camiones.length > 0 ? camiones.join(", ") : "Ninguno registrado aún (asigna el que mencione el usuario)"}
+${camiones && camiones.length > 0 ? camiones.join(", ") : "Ninguno registrado aun (asigna el que mencione el usuario)"}
 
 LISTA DE CLIENTES REGISTRADOS EN EL SISTEMA:
-${clientes && clientes.length > 0 ? clientes.join(", ") : "Ninguno registrado aún (asigna el que mencione el usuario)"}
+${clientes && clientes.length > 0 ? clientes.join(", ") : "Ninguno registrado aun (asigna el que mencione el usuario)"}
 
-REGLAS DE INTERPRETACIÓN:
-- Sé inteligente extrayendo montos numéricos. "ochocientos cincuenta" es 850. "tres mil quinientos" es 3500.
-- Si el usuario NO especificó explícitamente el tipo de registro (gasto, pago, viaje), detéctalo automáticamente analizando el texto, la imagen o el audio.
-- Calcula un nivel de confianza_ia: "alta" (si la información es clara y completa), "media" (si faltan varios datos y se requiere revisar), o "baja" (si la entrada es confusa, ruidosa o incomprensible).
-- Responde ÚNICAMENTE con un objeto JSON válido con la siguiente estructura exacta:
+REGLAS DE INTERPRETACION:
+- Se inteligente extrayendo montos numericos. "ochocientos cincuenta" es 850. "tres mil quinientos" es 3500.
+- Si el usuario NO especifico explicitamente el tipo de registro (gasto, pago, viaje), detectalo automaticamente analizando el texto, la imagen o el audio.
+- Calcula un nivel de confianza_ia: "alta" (si la informacion es clara y completa), "media" (si faltan varios datos y se requiere revisar), o "baja" (si la entrada es confusa, ruidosa o incomprensible).
+- Responde UNICAMENTE con un objeto JSON valido con la siguiente estructura exacta:
 {
   "tipo_registro": "gasto" | "pago" | "viaje",
   "confianza_ia": "alta" | "media" | "baja",
-  "datos": { ...campos específicos de la categoría seleccionada... }
+  "datos": { ...campos especificos de la categoria seleccionada... }
 }
 `;
 
@@ -121,7 +184,7 @@ REGLAS DE INTERPRETACIÓN:
         }
       });
       contents[0].parts.push({
-        text: "Analiza también esta imagen adjunta (recibo, factura o evidencia) para extraer los datos."
+        text: "Analiza tambien esta imagen adjunta (recibo, factura o evidencia) para extraer los datos."
       });
     }
 
@@ -135,7 +198,7 @@ REGLAS DE INTERPRETACIÓN:
         }
       });
       contents[0].parts.push({
-        text: "Escucha este archivo de audio grabado por el usuario que contiene el registro de voz y extrae la información dictada."
+        text: "Escucha este archivo de audio grabado por el usuario que contiene el registro de voz y extrae la informacion dictada."
       });
     }
 
@@ -160,7 +223,7 @@ REGLAS DE INTERPRETACIÓN:
   } catch (error: any) {
     console.error("Error processing input with Gemini:", error);
     return res.status(500).json({
-      error: "Ocurrió un error al procesar la información con Inteligencia Artificial.",
+      error: "Ocurrio un error al procesar la informacion con Inteligencia Artificial.",
       details: error.message
     });
   }
@@ -205,6 +268,28 @@ async function appendSheetValues(accessToken: string, range: string, values: any
   }
 }
 
+async function updateSheetValues(accessToken: string, range: string, values: any[][]): Promise<void> {
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${encodeURIComponent(range)}?valueInputOption=USER_ENTERED`;
+  const response = await fetch(url, {
+    method: "PUT",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ values }),
+  });
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Sheets update range ${range} failed: ${response.statusText} (${errorText})`);
+  }
+}
+
+async function findRowById(accessToken: string, sheetName: string, id: string): Promise<number> {
+  const rows = await getSheetValues(accessToken, `${sheetName}!A1:A3000`);
+  const rowIndex = rows.findIndex((row) => row?.[0] === id);
+  return rowIndex === -1 ? -1 : rowIndex + 1;
+}
+
 async function writeAuditoriaOnServer(
   accessToken: string,
   userEmail: string,
@@ -235,7 +320,7 @@ async function writeAuditoriaOnServer(
       fuente,
       notas || ""
     ];
-    await appendSheetValues(accessToken, "Auditoría", [row]);
+    await appendSheetValues(accessToken, "Auditor\u00eda", [row]);
   } catch (err) {
     console.error("Auditoria write failed on server:", err);
   }
@@ -244,8 +329,19 @@ async function writeAuditoriaOnServer(
 // 1. Dropdowns Endpoint (Camiones and Clientes)
 app.get("/api/sheets/dropdowns", async (req: express.Request, res: express.Response) => {
   const token = getGoogleToken(req);
+  if (!token && hasBridgeConfig()) {
+    try {
+      const data = await callKargoBridge("getDropdowns", {});
+      return res.json({
+        camiones: data.camiones || data.payload?.camiones || [],
+        clientes: data.clientes || data.payload?.clientes || [],
+      });
+    } catch (err: any) {
+      return res.status(500).json({ error: "Fallo al cargar catalogos desde Kargo Bridge", details: err.message });
+    }
+  }
   if (!token) {
-    return res.status(401).json({ error: "No se proporcionó token de autorización." });
+    return res.status(401).json({ error: "No se proporciono token de autorizacion." });
   }
 
   try {
@@ -259,7 +355,7 @@ app.get("/api/sheets/dropdowns", async (req: express.Request, res: express.Respo
         const id = row[0] ? String(row[0]).trim() : "";
         const nombre = row[1] ? String(row[1]).trim() : "";
         if (id && nombre) {
-          return `${id} — ${nombre}`;
+          return `${id} - ${nombre}`;
         }
         return id;
       })
@@ -270,7 +366,7 @@ app.get("/api/sheets/dropdowns", async (req: express.Request, res: express.Respo
         const id = row[0] ? String(row[0]).trim() : "";
         const nombre = row[1] ? String(row[1]).trim() : "";
         if (id && nombre) {
-          return `${id} — ${nombre}`;
+          return `${id} - ${nombre}`;
         }
         return id;
       })
@@ -286,15 +382,23 @@ app.get("/api/sheets/dropdowns", async (req: express.Request, res: express.Respo
 // 2. Read All Activities (Gastos, Pagos, Viajes)
 app.get("/api/sheets/activities", async (req: express.Request, res: express.Response) => {
   const token = getGoogleToken(req);
+  if (!token && hasBridgeConfig()) {
+    try {
+      const data = await callKargoBridge("getActivities", {});
+      return res.json({ activities: data.activities || data.payload?.activities || [] });
+    } catch (err: any) {
+      return res.status(500).json({ error: "Fallo al obtener registros desde Kargo Bridge", details: err.message });
+    }
+  }
   if (!token) {
-    return res.status(401).json({ error: "No se proporcionó token de autorización." });
+    return res.status(401).json({ error: "No se proporciono token de autorizacion." });
   }
 
   try {
     const [gastosRows, pagosRows, viajesRows] = await Promise.all([
-      getSheetValues(token, "Gastos!A2:T2000").catch(() => []),
-      getSheetValues(token, "Pagos!A2:N2000").catch(() => []),
-      getSheetValues(token, "Viajes!A2:U2000").catch(() => [])
+      getSheetValues(token, "Gastos!A2:X2000").catch(() => []),
+      getSheetValues(token, "Pagos!A2:S2000").catch(() => []),
+      getSheetValues(token, "Viajes!A2:Z2000").catch(() => [])
     ]);
 
     const gastos = gastosRows.map((row) => ({
@@ -303,21 +407,30 @@ app.get("/api/sheets/activities", async (req: express.Request, res: express.Resp
       Hora: row[2] || "",
       Registrado_por: row[3] || "",
       Tipo_entrada: row[4] || "texto",
-      Categoría: row[5] || "",
-      Subcategoría: row[6] || "",
+      ["Categor\u00eda"]: row[5] || "",
+      Categoria: row[5] || "",
+      ["Subcategor\u00eda"]: row[6] || "",
+      Subcategoria: row[6] || "",
       Monto_MXN: Number(row[7]) || 0,
-      Método_pago: row[8] || "",
-      Camión: row[9] || "",
+      ["M\u00e9todo_pago"]: row[8] || "",
+      Metodo_pago: row[8] || "",
+      ["Cami\u00f3n"]: row[9] || "",
+      Camion: row[9] || "",
       Chofer: row[10] || "",
       Cliente: row[11] || "",
       Viaje_ID: row[12] || "",
       Proveedor: row[13] || "",
-      Estado_validación: row[14] || "validado",
+      Estado_validacion: row[14] || "pendiente_aprobacion",
+      ["Estado_validaci\u00f3n"]: row[14] || "pendiente_aprobacion",
       Confianza_IA: row[15] || "alta",
       URL_evidencia_Drive: row[16] || "",
       Notas: row[17] || "",
       Created_at: row[18] || "",
       Updated_at: row[19] || "",
+      Aprobado_por: row[20] || "",
+      Fecha_aprobacion: row[21] || "",
+      Hora_aprobacion: row[22] || "",
+      Notas_aprobacion: row[23] || "",
       _type: "gasto"
     })).filter((g) => g.ID_gasto);
 
@@ -328,7 +441,8 @@ app.get("/api/sheets/activities", async (req: express.Request, res: express.Resp
       Registrado_por: row[3] || "",
       Cliente: row[4] || "",
       Monto_MXN: Number(row[5]) || 0,
-      Método_pago: row[6] || "",
+      ["M\u00e9todo_pago"]: row[6] || "",
+      Metodo_pago: row[6] || "",
       Viaje_ID: row[7] || "",
       Saldo_restante_MXN: Number(row[8]) || 0,
       Estado_pago: row[9] || "",
@@ -336,6 +450,12 @@ app.get("/api/sheets/activities", async (req: express.Request, res: express.Resp
       Notas: row[11] || "",
       Created_at: row[12] || "",
       Updated_at: row[13] || "",
+      Estado_validacion: row[14] || "pendiente_aprobacion",
+      ["Estado_validaci\u00f3n"]: row[14] || "pendiente_aprobacion",
+      Aprobado_por: row[15] || "",
+      Fecha_aprobacion: row[16] || "",
+      Hora_aprobacion: row[17] || "",
+      Notas_aprobacion: row[18] || "",
       _type: "pago"
     })).filter((p) => p.ID_pago);
 
@@ -349,8 +469,10 @@ app.get("/api/sheets/activities", async (req: express.Request, res: express.Resp
       Destino: row[6] || "",
       Material: row[7] || "",
       Metros_cubicos: Number(row[8]) || 0,
-      Kilómetros: Number(row[9]) || 0,
-      Camión: row[10] || "",
+      ["Kil\u00f3metros"]: Number(row[9]) || 0,
+      Kilometros: Number(row[9]) || 0,
+      ["Cami\u00f3n"]: row[10] || "",
+      Camion: row[10] || "",
       Chofer: row[11] || "",
       Precio_cobrado_MXN: Number(row[12]) || 0,
       Costo_estimado_MXN: Number(row[13]) || 0,
@@ -361,6 +483,12 @@ app.get("/api/sheets/activities", async (req: express.Request, res: express.Resp
       Observaciones: row[18] || "",
       Created_at: row[19] || "",
       Updated_at: row[20] || "",
+      Estado_validacion: row[21] || "pendiente_aprobacion",
+      ["Estado_validaci\u00f3n"]: row[21] || "pendiente_aprobacion",
+      Aprobado_por: row[22] || "",
+      Fecha_aprobacion: row[23] || "",
+      Hora_aprobacion: row[24] || "",
+      Notas_aprobacion: row[25] || "",
       _type: "viaje"
     })).filter((v) => v.ID_viaje);
 
@@ -383,9 +511,17 @@ app.get("/api/sheets/activities", async (req: express.Request, res: express.Resp
 // 3. Save Gasto
 app.post("/api/sheets/gasto", async (req: express.Request, res: express.Response) => {
   const token = getGoogleToken(req);
-  if (!token) return res.status(401).json({ error: "No autorizado" });
   const { gasto } = req.body;
   if (!gasto) return res.status(400).json({ error: "Falta el registro del gasto" });
+  if (!token && hasBridgeConfig()) {
+    try {
+      await callKargoBridge("saveGasto", { gasto });
+      return res.json({ success: true, bridge: true });
+    } catch (err: any) {
+      return res.status(500).json({ error: "Fallo al guardar gasto por Kargo Bridge", details: err.message });
+    }
+  }
+  if (!token) return res.status(401).json({ error: "No autorizado" });
 
   try {
     const row = [
@@ -394,21 +530,25 @@ app.post("/api/sheets/gasto", async (req: express.Request, res: express.Response
       gasto.Hora,
       gasto.Registrado_por,
       gasto.Tipo_entrada,
-      gasto.Categoría,
-      gasto.Subcategoría,
+      gasto["Categor\u00eda"] || gasto.Categoria || "",
+      gasto["Subcategor\u00eda"] || gasto.Subcategoria || "",
       gasto.Monto_MXN,
-      gasto.Método_pago,
-      gasto.Camión,
+      gasto["M\u00e9todo_pago"] || gasto.Metodo_pago || "",
+      gasto["Cami\u00f3n"] || gasto.Camion || "",
       gasto.Chofer,
       gasto.Cliente,
       gasto.Viaje_ID,
       gasto.Proveedor,
-      gasto.Estado_validación,
+      gasto.Estado_validacion || gasto["Estado_validaci\u00f3n"] || "pendiente_aprobacion",
       gasto.Confianza_IA,
       gasto.URL_evidencia_Drive,
       gasto.Notas,
       gasto.Created_at,
       gasto.Updated_at,
+      gasto.Aprobado_por || "",
+      gasto.Fecha_aprobacion || gasto["Fecha_aprobaci\u00f3n"] || "",
+      gasto.Hora_aprobacion || gasto["Hora_aprobaci\u00f3n"] || "",
+      gasto.Notas_aprobacion || gasto["Notas_aprobaci\u00f3n"] || "",
     ];
     await appendSheetValues(token, "Gastos", [row]);
     await writeAuditoriaOnServer(
@@ -419,7 +559,7 @@ app.post("/api/sheets/gasto", async (req: express.Request, res: express.Response
       gasto.ID_gasto,
       "",
       "",
-      JSON.stringify({ Monto_MXN: gasto.Monto_MXN, Categoría: gasto.Categoría }),
+      JSON.stringify({ Monto_MXN: gasto.Monto_MXN, Categoria: gasto["Categor\u00eda"] || gasto.Categoria || "" }),
       `Gasto de $${gasto.Monto_MXN} guardado en Sheets.`
     );
     return res.json({ success: true });
@@ -432,9 +572,17 @@ app.post("/api/sheets/gasto", async (req: express.Request, res: express.Response
 // 4. Save Pago
 app.post("/api/sheets/pago", async (req: express.Request, res: express.Response) => {
   const token = getGoogleToken(req);
-  if (!token) return res.status(401).json({ error: "No autorizado" });
   const { pago } = req.body;
   if (!pago) return res.status(400).json({ error: "Falta el registro del pago" });
+  if (!token && hasBridgeConfig()) {
+    try {
+      await callKargoBridge("savePago", { pago });
+      return res.json({ success: true, bridge: true });
+    } catch (err: any) {
+      return res.status(500).json({ error: "Fallo al guardar pago por Kargo Bridge", details: err.message });
+    }
+  }
+  if (!token) return res.status(401).json({ error: "No autorizado" });
 
   try {
     const row = [
@@ -444,7 +592,7 @@ app.post("/api/sheets/pago", async (req: express.Request, res: express.Response)
       pago.Registrado_por,
       pago.Cliente,
       pago.Monto_MXN,
-      pago.Método_pago,
+      pago["M\u00e9todo_pago"] || pago.Metodo_pago || "",
       pago.Viaje_ID,
       pago.Saldo_restante_MXN,
       pago.Estado_pago,
@@ -452,6 +600,11 @@ app.post("/api/sheets/pago", async (req: express.Request, res: express.Response)
       pago.Notas,
       pago.Created_at,
       pago.Updated_at,
+      pago.Estado_validacion || pago["Estado_validaci\u00f3n"] || "pendiente_aprobacion",
+      pago.Aprobado_por || "",
+      pago.Fecha_aprobacion || pago["Fecha_aprobaci\u00f3n"] || "",
+      pago.Hora_aprobacion || pago["Hora_aprobaci\u00f3n"] || "",
+      pago.Notas_aprobacion || pago["Notas_aprobaci\u00f3n"] || "",
     ];
     await appendSheetValues(token, "Pagos", [row]);
     await writeAuditoriaOnServer(
@@ -475,9 +628,17 @@ app.post("/api/sheets/pago", async (req: express.Request, res: express.Response)
 // 5. Save Viaje
 app.post("/api/sheets/viaje", async (req: express.Request, res: express.Response) => {
   const token = getGoogleToken(req);
-  if (!token) return res.status(401).json({ error: "No autorizado" });
   const { viaje } = req.body;
   if (!viaje) return res.status(400).json({ error: "Falta el flete o viaje" });
+  if (!token && hasBridgeConfig()) {
+    try {
+      await callKargoBridge("saveViaje", { viaje });
+      return res.json({ success: true, bridge: true });
+    } catch (err: any) {
+      return res.status(500).json({ error: "Fallo al guardar viaje por Kargo Bridge", details: err.message });
+    }
+  }
+  if (!token) return res.status(401).json({ error: "No autorizado" });
 
   try {
     const row = [
@@ -490,8 +651,8 @@ app.post("/api/sheets/viaje", async (req: express.Request, res: express.Response
       viaje.Destino,
       viaje.Material,
       viaje.Metros_cubicos,
-      viaje.Kilómetros,
-      viaje.Camión,
+      viaje["Kil\u00f3metros"] || viaje.Kilometros || 0,
+      viaje["Cami\u00f3n"] || viaje.Camion || "",
       viaje.Chofer,
       viaje.Precio_cobrado_MXN,
       viaje.Costo_estimado_MXN,
@@ -502,6 +663,11 @@ app.post("/api/sheets/viaje", async (req: express.Request, res: express.Response
       viaje.Observaciones,
       viaje.Created_at,
       viaje.Updated_at,
+      viaje.Estado_validacion || viaje["Estado_validaci\u00f3n"] || "pendiente_aprobacion",
+      viaje.Aprobado_por || "",
+      viaje.Fecha_aprobacion || viaje["Fecha_aprobaci\u00f3n"] || "",
+      viaje.Hora_aprobacion || viaje["Hora_aprobaci\u00f3n"] || "",
+      viaje.Notas_aprobacion || viaje["Notas_aprobaci\u00f3n"] || "",
     ];
     await appendSheetValues(token, "Viajes", [row]);
     await writeAuditoriaOnServer(
@@ -512,8 +678,8 @@ app.post("/api/sheets/viaje", async (req: express.Request, res: express.Response
       viaje.ID_viaje,
       "",
       "",
-      JSON.stringify({ Cliente: viaje.Cliente, Camión: viaje.Camión, Origen: viaje.Origen, Destino: viaje.Destino }),
-      `Viaje para ${viaje.Cliente} (Camión: ${viaje.Camión}) guardado.`
+      JSON.stringify({ Cliente: viaje.Cliente, Camion: viaje["Cami\u00f3n"] || viaje.Camion || "", Origen: viaje.Origen, Destino: viaje.Destino }),
+      `Viaje para ${viaje.Cliente} (Camion: ${viaje["Cami\u00f3n"] || viaje.Camion || ""}) guardado.`
     );
     return res.json({ success: true });
   } catch (err: any) {
@@ -541,16 +707,89 @@ app.post("/api/sheets/auditoria", async (req: express.Request, res: express.Resp
     );
     return res.json({ success: true });
   } catch (err: any) {
-    return res.status(500).json({ error: "Error de auditoría", details: err.message });
+    return res.status(500).json({ error: "Error de auditoria", details: err.message });
+  }
+});
+
+app.post("/api/sheets/approve", async (req: express.Request, res: express.Response) => {
+  const token = getGoogleToken(req);
+  const { records, approvedBy, status = "aprobado", notes = "" } = req.body || {};
+  if (!Array.isArray(records) || records.length === 0) {
+    return res.status(400).json({ error: "Faltan registros para aprobar." });
+  }
+
+  const now = new Date();
+  const fecha = now.toISOString().split("T")[0];
+  const hora = now.toTimeString().split(" ")[0];
+
+  if (!token && hasBridgeConfig()) {
+    try {
+      await callKargoBridge("approveRecords", { records, approvedBy, status, notes, fecha, hora });
+      return res.json({ success: true, bridge: true });
+    } catch (err: any) {
+      return res.status(500).json({ error: "Fallo al aprobar por Kargo Bridge", details: err.message });
+    }
+  }
+  if (!token) return res.status(401).json({ error: "No autorizado" });
+
+  const columnMap: Record<string, { sheet: string; range: (row: number) => string }> = {
+    gasto: { sheet: "Gastos", range: (row) => `Gastos!O${row}:X${row}` },
+    pago: { sheet: "Pagos", range: (row) => `Pagos!O${row}:S${row}` },
+    viaje: { sheet: "Viajes", range: (row) => `Viajes!V${row}:Z${row}` },
+  };
+
+  try {
+    for (const item of records) {
+      const type = String(item.type || "");
+      const id = String(item.id || "");
+      const config = columnMap[type];
+      if (!config || !id) continue;
+
+      const row = await findRowById(token, config.sheet, id);
+      if (row === -1) {
+        throw new Error(`No se encontro ${id} en ${config.sheet}`);
+      }
+
+      const values =
+        type === "gasto"
+          ? [[status, "", "", "", "", "", approvedBy || "", fecha, hora, notes || ""]]
+          : [[status, approvedBy || "", fecha, hora, notes || ""]];
+
+      await updateSheetValues(token, config.range(row), values);
+      await writeAuditoriaOnServer(
+        token,
+        approvedBy || "sistema",
+        status === "aprobado" ? "APROBAR_REGISTRO" : "RECHAZAR_REGISTRO",
+        type,
+        id,
+        "Estado_validacion",
+        "pendiente_aprobacion",
+        status,
+        notes || ""
+      );
+    }
+
+    return res.json({ success: true });
+  } catch (err: any) {
+    console.error("Error approving records:", err);
+    return res.status(500).json({ error: "Fallo al aprobar registros", details: err.message });
   }
 });
 
 // 7. Upload to Google Drive Proxy
 app.post("/api/drive/upload", async (req: express.Request, res: express.Response) => {
   const token = getGoogleToken(req);
-  if (!token) return res.status(401).json({ error: "No autorizado" });
   const { base64File, fileName, mimeType } = req.body;
   if (!base64File) return res.status(400).json({ error: "Archivo faltante" });
+  if (!token && hasBridgeConfig()) {
+    try {
+      const data = await callKargoBridge("uploadFile", { base64File, fileName, mimeType });
+      return res.json({ url: data.url || data.payload?.url || data.webViewLink || "" });
+    } catch (err: any) {
+      return res.status(500).json({ error: "Fallo al subir archivo por Kargo Bridge", details: err.message });
+    }
+  }
+  if (!token) return res.status(401).json({ error: "No autorizado" });
 
   try {
     const base64Data = base64File.replace(/^data:.*;base64,/, "");
@@ -609,7 +848,7 @@ app.post("/api/sheets/update-evidence", async (req: express.Request, res: expres
   
   const { id, type, evidenceUrl, evidenceType } = req.body;
   if (!id || !type || !evidenceUrl) {
-    return res.status(400).json({ error: "Faltan parámetros requeridos (id, type, evidenceUrl)" });
+    return res.status(400).json({ error: "Faltan parametros requeridos (id, type, evidenceUrl)" });
   }
 
   try {
@@ -630,7 +869,7 @@ app.post("/api/sheets/update-evidence", async (req: express.Request, res: expres
       colRange = "Viajes!A1:A2000";
       cellColLetter = evidenceType === "carga" ? "Q" : "R"; // Column Q is Carga, Column R is Descarga
     } else {
-      return res.status(400).json({ error: "Tipo de registro no válido." });
+      return res.status(400).json({ error: "Tipo de registro no valido." });
     }
 
     // Find the row containing the unique ID in Column A
@@ -654,7 +893,7 @@ app.post("/api/sheets/update-evidence", async (req: express.Request, res: expres
     }
 
     if (rowIndex === -1) {
-      return res.status(404).json({ error: `No se encontró el registro con ID ${id} en la hoja ${sheetName}.` });
+      return res.status(404).json({ error: `No se encontro el registro con ID ${id} en la hoja ${sheetName}.` });
     }
 
     // Update the cell value

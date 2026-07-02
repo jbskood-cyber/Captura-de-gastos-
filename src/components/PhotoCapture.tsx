@@ -18,14 +18,16 @@ export default function PhotoCapture({
 }: PhotoCaptureProps) {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [hasPhoto, setHasPhoto] = useState(false);
+  const [error, setError] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const processFile = (file: File) => {
     if (!file.type.startsWith("image/")) {
-      alert("Por favor selecciona un archivo de imagen valido.");
+      setError("Selecciona una imagen valida.");
       return;
     }
 
+    setError("");
     setPreviewUrl(URL.createObjectURL(file));
     const reader = new FileReader();
     reader.readAsDataURL(file);
@@ -114,6 +116,7 @@ export default function PhotoCapture({
           <div>
             <h3 className="text-base font-semibold text-[var(--bravo-ink)]">Capturar foto</h3>
             <p className="mt-1 text-sm text-[var(--bravo-muted)]">Toma una foto o elige una imagen.</p>
+            {error && <p className="mt-2 text-sm text-[var(--bravo-muted)]">{error}</p>}
           </div>
           <div className="grid grid-cols-2 gap-3">
             <button type="button" id="camera-capture-trigger" className="bravo-primary-button" disabled={isProcessing} onClick={openCamera}>

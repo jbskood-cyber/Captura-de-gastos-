@@ -1,4 +1,13 @@
-export type ValidationState = "borrador" | "revisar" | "validado" | "pendiente_sync" | "error_sync" | "descartado";
+export type ValidationState =
+  | "borrador"
+  | "revisar"
+  | "validado"
+  | "pendiente_aprobacion"
+  | "aprobado"
+  | "rechazado"
+  | "pendiente_sync"
+  | "error_sync"
+  | "descartado";
 export type IAConfidence = "alta" | "media" | "baja";
 export type RecordType = "gasto" | "pago" | "viaje";
 
